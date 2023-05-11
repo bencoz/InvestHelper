@@ -3,8 +3,10 @@ import random
 import yfinance as yf
 
 VERBOSE = False
-dividend_stocks = ['VYM', 'SDY', 'VIG', 'T', 'KO', 'JNJ', 'QCOM', 'TSM', 'BBY', 'HD', 'TXN', 'CNQ', 'AVGO', 'PG', 'KMI']
-growth_stocks = ['AAPL', 'GOOG', 'MSFT', 'AMZN', 'TSLA', 'NVDA', 'PANW', 'DIS', 'MA', 'AMD', 'ATVI']
+dividend_stocks = ['AXP', 'BAC', 'CVX', 'VYM', 'SDY', 'VIG', 'T', 'KO',
+                   'JNJ', 'QCOM', 'TSM', 'BBY', 'HD', 'TXN', 'CNQ', 'AVGO', 'PG', 'KMI']
+growth_stocks = ['AAPL', 'GOOG', 'MSFT', 'AMZN', 'TSLA', 'NVDA', 'PANW', 'DIS', 'MA', 'NFLX',
+                 'AMD', 'ATVI', 'GLBE', 'MDB', 'SNOW', 'ATVI', 'AMAT', 'DOCN', 'MBLY']
 index_funds = ['SPY', 'QQQ', 'DIA', 'VTI', 'IWM', 'EWJ', 'VGK', 'EEM', 'EFA']
 
 
@@ -41,28 +43,30 @@ def generate_portfolio(stock_prices, total_budget, option='random'):
         # Calculate the budget for each stock
         stock_budget = budget // num_stocks
         # Allocate an equal budget to each stock
-        for stock, price in stock_prices:
+        for stock, mean_price, curr_price in stock_prices:
             # Calculate the number of shares that can be purchased with the budget for this stock
-            shares_to_buy = stock_budget // price
+            shares_to_buy = stock_budget // mean_price
             # Calculate the total cost of the shares to buy
-            cost = shares_to_buy * price
+            cost = shares_to_buy * mean_price
             # Subtract the cost from the remaining budget
             budget -= cost
             # Add the stock and number of shares to the portfolio
-            portfolio.append((stock, shares_to_buy, price))
+            portfolio.append((stock, shares_to_buy, mean_price, curr_price))
     else:
+        # TODO:: If you want to buy based on good price sort based on the diff between mean price and current
+        stock_prices = sorted(stock_prices, key=lambda x: x[3])
         # Iterate through the list of stock prices and add stocks to the portfolio
-        for stock, price in stock_prices:
+        for stock, mean_price, curr_price, _diff in stock_prices:
             # Calculate the maximum number of shares of this stock that can be purchased within the remaining budget
-            max_shares = budget // price
+            max_shares = budget // mean_price
             # Choose a random number of shares to buy, between 0 and the maximum number of shares
             shares_to_buy = random.randint(0, max_shares)
             # Calculate the total cost of the shares to buy
-            cost = shares_to_buy * price
+            cost = shares_to_buy * mean_price
             # Subtract the cost from the remaining budget
             budget -= cost
             # Add the stock and number of shares to the portfolio
-            portfolio.append((stock, shares_to_buy, price))
+            portfolio.append((stock, shares_to_buy, mean_price, curr_price))
 
     return portfolio
 
@@ -94,11 +98,12 @@ if index_investing:
 # Step 3: Scan suitable stocks for mean price
 stocks = yf.Tickers(optional_stocks)
 stocks_data = stocks.history(period='14d')['Close']
-stocks_prices = stocks_data.mean(axis=0).tolist()
+stocks_current_prices = stocks_data.iloc[-1].tolist()
+stocks_mean_prices = stocks_data.mean(axis=0).tolist()
 stocks_prices_names = list(stocks_data.columns)
 
-suitable_stocks = [(stock, price) for stock, price in
-                        zip(stocks_prices_names, stocks_prices)]
+suitable_stocks = [(stock, mean_price, current_price, current_price-mean_price) for stock, mean_price, current_price in
+                   zip(stocks_prices_names, stocks_mean_prices, stocks_current_prices)]
 
 if VERBOSE:
     # Print the list of suitable stocks and their mean price
@@ -113,9 +118,9 @@ portfolio = generate_portfolio(stock_prices=suitable_stocks, total_budget=amount
 # Step 5: Generate report or output for user
 print("portfolio:")
 price_sum = 0
-for stock, num, price in portfolio:
+for stock, num, mean_price, curr_price in portfolio:
     if num > 0:
-        price_sum += num * price
-        print(f"buy {num} {stock} stocks for {price}")
+        price_sum += num * mean_price
+        print(f"buy {num} {stock} stocks. current price: {curr_price} | mean 14D price: {mean_price} ")
 
 print(f"for a total of {price_sum}")
