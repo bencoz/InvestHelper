@@ -34,6 +34,7 @@ def ma_strategy(df, short_MA, long_MA):
 
 def buy_sell_signals(df, stock, start_date, end_date):
     totalprofit = 0
+    buy_price = 0
     print('Stock: {}'.format(stock))
     print('Period: {} - {}'.format(start_date, end_date))
     print('-' * 57)
@@ -177,26 +178,22 @@ def RSI(df):
     return df, rsi
 
 
-def generate_portfolio(stock_prices, total_budget, option='random'):
+def generate_portfolio(stock_prices, total_budget, percentage=None):
     # Shuffle the list of stock prices to randomize the selection
     random.shuffle(stock_prices)
     portfolio = []
     budget = total_budget
     num_stocks = len(stock_prices)
 
-    if option == 'equal':
-        # Calculate the budget for each stock
-        stock_budget = budget // num_stocks
-        # Allocate an equal budget to each stock
-        for stock, mean_price, curr_price in stock_prices:
-            # Calculate the number of shares that can be purchased with the budget for this stock
-            shares_to_buy = stock_budget // mean_price
-            # Calculate the total cost of the shares to buy
-            cost = shares_to_buy * mean_price
-            # Subtract the cost from the remaining budget
-            budget -= cost
+    if percentage is not None:
+        # percentage is a list of percentages in the same length of stock_prices that sum to 1
+        assert len(percentage) == num_stocks
+        # Iterate through the list of stock prices and add stocks to the portfolio
+        for i, (stock, mean_price, curr_price, _diff) in enumerate(stock_prices):
+            # Calculate the maximum number of shares of this stock that can be purchased within the remaining budget
+            max_shares = budget * percentage[i] // curr_price
             # Add the stock and number of shares to the portfolio
-            portfolio.append((stock, shares_to_buy, mean_price, curr_price))
+            portfolio.append((stock, max_shares, mean_price, curr_price))
     else:
         # TODO:: If you want to buy based on good price sort based on the diff between mean price and current
         stock_prices = sorted(stock_prices, key=lambda x: x[3])

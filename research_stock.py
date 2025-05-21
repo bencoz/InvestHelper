@@ -18,7 +18,7 @@ while True:
         break
 while True:
     try:
-        date_entry = input('Enter a date in YYYY-MM-DD format')
+        date_entry = input('Enter a date in YYYY-MM-DD format: ')
         year, month, day = map(int, date_entry.split('-'))
         start_date = datetime(year=year, month=month, day=day).date()
     except Exception as e:
