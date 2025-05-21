@@ -1,66 +1,88 @@
-# Stock Portfolio Generator and Researcher
+# AI Stock Research Assistant (Streamlit Web Application)
 
 ## Overview
 
-This project provides tools for generating investment portfolios and researching individual stocks. Users can customize stock selections through a configuration file and utilize scripts for portfolio creation based on investment preferences and for detailed stock analysis using moving averages and RSI.
+This project is an **AI Stock Research Assistant**, a web application powered by Streamlit, designed to help novice investors with stock research and portfolio generation. It provides an interactive, user-friendly interface to access functionalities that were previously command-line based. Users can dynamically generate investment portfolios and perform technical analysis on individual stocks.
 
 ## Features
 
-*   **Portfolio Generation**: Creates a diversified stock portfolio based on user-defined investment amounts and preferences for dividend stocks, growth stocks, or index funds.
-*   **Stock Research**: Performs technical analysis on individual stocks, including moving average strategies and Relative Strength Index (RSI) calculations, and visualizes results.
-*   **Customizable Stock Lists**: Stock choices for portfolio generation can be easily modified by editing a JSON configuration file.
-*   **Modular Codebase**: The code is organized into modules for clarity and maintainability.
+The application offers two main modes accessible via a sidebar navigation:
+
+*   **Portfolio Generator**:
+    *   Allows users to specify an investment amount.
+    *   Select preferences for investing in high-dividend stocks, growth stocks, and index funds.
+    *   Generates a diversified stock portfolio based on these inputs and historical price data.
+    *   Displays the suggested portfolio, including number of shares, mean prices, current prices, and total portfolio value.
+*   **Stock Analyzer**:
+    *   Enables users to input a stock ticker and a start date for analysis.
+    *   Performs technical analysis, including Moving Average (MA) strategies and Relative Strength Index (RSI) calculations.
+    *   Visualizes stock performance with charts for price, MAs, buy/sell signals, MA strategy wealth simulation vs. Buy & Hold, and RSI.
+    *   Provides a summary of backtesting results, comparing MA strategy wealth against a Buy & Hold strategy.
+*   **Customizable Stock Lists**: Stock choices for portfolio generation can be easily modified by editing the `config.json` file.
+*   **Modular Codebase**: The underlying logic is organized into reusable Python modules.
 
 ## Setup
 
 1.  Ensure you have Python 3.x installed.
 2.  Clone the repository (if you haven't already).
-3.  Install the required dependencies:
+3.  Install the required dependencies. This includes `streamlit`, `yfinance`, `pandas`, `matplotlib`, and `numpy`.
     ```bash
     pip install -r requirements.txt
     ```
 
+## Running the Application
+
+To run the AI Stock Research Assistant web application:
+
+1.  Navigate to the root directory of the project in your terminal.
+2.  Execute the following command:
+    ```bash
+    streamlit run app.py
+    ```
+3.  Your default web browser should automatically open to the application's UI.
+
 ## Usage
 
-### Portfolio Generation (`main.py`)
+Once the application is running, you can interact with it through the web interface:
 
-This script generates a stock portfolio based on your investment amount and selected stock categories.
+1.  **Mode Selection**: Use the sidebar navigation menu to choose between "Portfolio Generator" and "Stock Analyzer" modes.
 
-1.  Run the script:
-    ```bash
-    python main.py
-    ```
-2.  Enter the amount of money you want to invest when prompted.
-3.  Answer the prompts for investing in high dividend stocks, growth stocks, and index funds with 'yes' (or 'y') or 'no' (or 'n').
-4.  The script will output a suggested portfolio, including the number of shares to buy for each selected stock and total investment cost.
+2.  **Portfolio Generator Mode**:
+    *   **Inputs**:
+        *   Enter the total amount of money you wish to invest.
+        *   Select checkboxes for your preferred investment categories (high dividend, growth, index funds).
+    *   Click the "Generate Portfolio" button.
+    *   **Outputs**:
+        *   A table displaying the generated portfolio (Stock, Shares, Mean Price, Current Price).
+        *   Metrics showing the total portfolio value based on mean prices and current prices.
 
-### Stock Research (`research_stock.py`)
+3.  **Stock Analyzer Mode**:
+    *   **Inputs**:
+        *   Enter the stock ticker symbol you want to analyze (e.g., "AAPL", "GOOG").
+        *   Select the start date for the historical data analysis.
+    *   Click the "Analyze Stock" button.
+    *   **Outputs**:
+        *   Charts visualizing:
+            *   Stock closing prices with moving averages and buy/sell signals.
+            *   Comparison of wealth generated by the MA strategy versus a Buy & Hold strategy.
+            *   Relative Strength Index (RSI) with overbought/oversold indicators.
+        *   A summary of backtesting results, including final wealth and total profit for both strategies.
 
-This script allows you to perform a technical analysis for a specific stock.
-
-1.  Run the script:
-    ```bash
-    python research_stock.py
-    ```
-2.  Enter the stock ticker (e.g., `AAPL`, `GOOG`) when prompted.
-3.  Enter the start date for the analysis in `YYYY-MM-DD` format.
-4.  The script will display graphs showing moving averages, buy/sell signals, strategy wealth simulation, and the RSI.
+*(Note: The original command-line scripts `main.py` and `research_stock.py` are still present but the primary way to use this tool is now through the Streamlit application `app.py`.)*
 
 ## Configuration (`config.json`)
 
-The stock lists used by `main.py` for portfolio generation are managed in the `config.json` file located in the root directory. This allows you to customize the universe of stocks considered for investment without modifying the Python code.
+The stock lists used by the "Portfolio Generator" mode are managed in the `config.json` file located in the root directory. This allows you to customize the universe of stocks considered for investment without modifying the Python code.
 
-The `config.json` file contains the following lists:
-
+The `config.json` file contains three main keys:
 *   `"dividend_stocks"`: A list of stock tickers considered high-dividend.
 *   `"growth_stocks"`: A list of stock tickers considered growth stocks.
 *   `"index_funds"`: A list of tickers for index funds.
 
 **To customize these lists:**
-
 1.  Open `config.json` in a text editor.
 2.  Modify the lists by adding or removing stock tickers (strings) as desired.
-3.  Save the file. The changes will be reflected the next time you run `main.py`.
+3.  Save the file. The changes will be reflected the next time you use the Portfolio Generator feature in the web application.
 
 Example `config.json` structure:
 ```json
@@ -71,13 +93,9 @@ Example `config.json` structure:
 }
 ```
 
-## Code Structure
-
-The codebase has been refactored for improved modularity and organization. Key scripts like `main.py` (portfolio generation) and `research_stock.py` (stock analysis) now delegate tasks to helper functions within their respective files or to utility modules like `stock_utils.py` and `io_utils.py`. This separation of concerns makes the code easier to understand, maintain, and extend.
-
 ## Testing
 
-Unit tests are included to ensure the reliability of key functions. To run the tests:
+Unit tests are included to ensure the reliability of the underlying utility functions. To run the tests:
 
 1.  Navigate to the root directory of the project in your terminal.
 2.  Run the following command:
@@ -86,6 +104,10 @@ Unit tests are included to ensure the reliability of key functions. To run the t
     ```
     This will automatically discover and run all tests within the `tests` directory.
 
+## Screenshots
+
+*(As an AI Worker, I am unable to generate or embed screenshots directly into this README.md. When running the application, you will see an interactive interface with input fields, buttons, and data/chart displays for each mode.)*
+
 ---
 
-*Note: Investing in the stock market involves risk. This tool is for informational and educational purposes only and should not be considered financial advice.*
+*Disclaimer: Investing in the stock market involves risk. This tool is for informational and educational purposes only and should not be considered financial advice.*
