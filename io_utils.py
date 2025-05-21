@@ -3,25 +3,34 @@ import matplotlib.pyplot as plt
 
 
 def query_yes_no(question, default="yes"):
-    valid = {"yes": True, "y": True, "ye": True, "no": False, "n": False}
+    """Asks a yes/no question via input() and returns their answer.
+
+    "question" is a string that is presented to the user.
+    "default" is the presumed answer if the user just hits <Enter>.
+        It must be "yes" (the default), "no" or None (meaning
+        an answer is required of the user).
+
+    The "answer" return value is True for "yes" or False for "no".
+    """
+    valid_responses = {"yes": True, "y": True, "no": False, "n": False}
     if default is None:
-        prompt = " [y/n] "
+        prompt_suffix = " [y/n] "
     elif default == "yes":
-        prompt = " [Y/n] "
+        prompt_suffix = " [Y/n] "
     elif default == "no":
-        prompt = " [y/N] "
+        prompt_suffix = " [y/N] "
     else:
-        raise ValueError("invalid default answer: '%s'" % default)
+        raise ValueError(f"Invalid default answer: '{default}'")
 
     while True:
-        sys.stdout.write(question + prompt)
-        choice = input().lower()
+        sys.stdout.write(question + prompt_suffix)
+        choice = input().lower().strip()  # Normalize input
         if default is not None and choice == "":
-            return valid[default]
-        elif choice in valid:
-            return valid[choice]
+            return valid_responses[default]
+        elif choice in valid_responses:
+            return valid_responses[choice]
         else:
-            sys.stdout.write("Please respond with 'yes' or 'no' " "(or 'y' or 'n').\n")
+            sys.stdout.write("Please answer with 'yes' or 'no'.\n")
 
 
 def print_graph(df, stock):
