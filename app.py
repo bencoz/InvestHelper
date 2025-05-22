@@ -146,17 +146,12 @@ elif app_mode == "Stock Analyzer":
                         st.pyplot(fig_wealth)
 
                         # 6. Calculate and display RSI
-                        df_with_rsi_col, rsi_series = RSI(backtest_results_df.copy())
+                        # df_with_rsi_col (from RSI function) should have 'Date' as a column and 'Close' prices.
+                        # rsi_series is the calculated RSI data.
+                        # io_utils.get_rsi_plot will handle setting the index from 'Date' column if necessary.
+                        df_with_rsi_col, rsi_series = RSI(backtest_results_df.copy()) 
                         
-                        df_plot_rsi = df_with_rsi_col.copy()
-                        if 'Date' in df_plot_rsi.columns and not isinstance(df_plot_rsi.index, pd.DatetimeIndex):
-                             df_plot_rsi['Date'] = pd.to_datetime(df_plot_rsi['Date'])
-                             df_plot_rsi = df_plot_rsi.set_index('Date')
-                        elif not isinstance(df_plot_rsi.index, pd.DatetimeIndex):
-                             st.warning("RSI plot might be incorrect as Date index could not be set properly.")
-
-
-                        fig_rsi = get_rsi_plot(df_plot_rsi, rsi_series)
+                        fig_rsi = get_rsi_plot(df_with_rsi_col, rsi_series)
                         st.pyplot(fig_rsi)
                         
                         # 7. Display Backtest results metrics

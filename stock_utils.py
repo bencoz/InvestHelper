@@ -34,11 +34,11 @@ def ma_strategy(df, short_MA, long_MA):
 
 def buy_sell_signals(df, stock, start_date, end_date):
     totalprofit = 0
-    print('Stock: {}'.format(stock))
-    print('Period: {} - {}'.format(start_date, end_date))
-    print('-' * 57)
-    print('{:^7}{:^10}{:^15}{:^10}{:^15}'.format('S/N', 'Buy Date', 'Buy Price($)', 'Sell Date', 'Sell Price($)'))
-    print('-' * 57)
+    # print('Stock: {}'.format(stock))
+    # print('Period: {} - {}'.format(start_date, end_date))
+    # print('-' * 57)
+    # print('{:^7}{:^10}{:^15}{:^10}{:^15}'.format('S/N', 'Buy Date', 'Buy Price($)', 'Sell Date', 'Sell Price($)'))
+    # print('-' * 57)
 
     for i, row in df.iterrows():
         if df.loc[i, 'position'] == 1:
@@ -51,7 +51,7 @@ def buy_sell_signals(df, stock, start_date, end_date):
             profit = round(profit, 2)
             totalprofit = totalprofit + profit
             totalprofit = round(totalprofit, 2)
-            print('{:^7}{}{:^15}{}{:^15}'.format(i, buydate, buy_price, selldate, sell_price))
+            # print('{:^7}{}{:^15}{}{:^15}'.format(i, buydate, buy_price, selldate, sell_price))
 
     return df
 
@@ -72,18 +72,18 @@ def backtest(df, stock, startdate, enddate, initial_wealth):
     inital_sell = 0
     df['position'].iloc[-1] = -1
 
-    print('Stock: {}'.format(stock))
-    print('Period: {} - {}'.format(startdate, enddate))
-    print('Initial Wealth: {}'.format(initial_wealth))
-    print('-' * 100)
-    print('{:^7}{:^15}{:^10}{:^15}{:^20}{:^20}{:^10}{:^20}{:^20}{:^20}{:^20}'.format('Sr. No', 'Buy Date',
-                                                                                     'Buy Price($)', 'Sell Date',
-                                                                                     'Sell Price($)',
-                                                                                     'Investment($)', 'Qty',
-                                                                                     'total_buy_p', 'total_sell_p',
-                                                                                     'profitloss', 'MA_wealth'))
+    # print('Stock: {}'.format(stock))
+    # print('Period: {} - {}'.format(startdate, enddate))
+    # print('Initial Wealth: {}'.format(initial_wealth))
+    # print('-' * 100)
+    # print('{:^7}{:^15}{:^10}{:^15}{:^20}{:^20}{:^10}{:^20}{:^20}{:^20}{:^20}'.format('Sr. No', 'Buy Date',
+                                                                                     # 'Buy Price($)', 'Sell Date',
+                                                                                     # 'Sell Price($)',
+                                                                                     # 'Investment($)', 'Qty',
+                                                                                     # 'total_buy_p', 'total_sell_p',
+                                                                                     # 'profitloss', 'MA_wealth'))
 
-    print('-' * 100)
+    # print('-' * 100)
     for i, row in df.iterrows():
         if position == 0:
             if df.loc[i, 'position'] == 1:
@@ -114,10 +114,10 @@ def backtest(df, stock, startdate, enddate, initial_wealth):
                 MA_wealth = round(balance + total_sell_p, 2)
                 balance = round(balance, 2)
 
-                print('{:^7}{}{:^15}{}{:^15}{:^15}{:^15}{:^20}{:^20}{:^10}{:^10}'.format(i, buy_d, buy_p, sell_d,
-                                                                                         sell_p, MA_wealth, qty,
-                                                                                         total_buy_p, total_sell_p,
-                                                                                         profitloss, MA_wealth))
+                # print('{:^7}{}{:^15}{}{:^15}{:^15}{:^15}{:^20}{:^20}{:^10}{:^10}'.format(i, buy_d, buy_p, sell_d,
+                                                                                         # sell_p, MA_wealth, qty,
+                                                                                         # total_buy_p, total_sell_p,
+                                                                                         # profitloss, MA_wealth))
 
                 sell_balance = balance + total_sell_p
                 position = 0
@@ -147,11 +147,11 @@ def backtest(df, stock, startdate, enddate, initial_wealth):
     MA_profitloss = round(MA_profitloss, 2)
     LT_profitloss = round(LT_profitloss, 2)
 
-    print('-' * 100)
-    print('Short MA Profit/Loss: ${:,}, Long MA Profit/Loss: ${:,}'.format(MA_profitloss, LT_profitloss))
-    print('')
-    print('Short MA Final Wealth: ${:,.2f}, Long MA Final Wealth: ${:,.2f}'.format(MA_wealth, LT_wealth))
-    print('-' * 100)
+    # print('-' * 100)
+    # print('Short MA Profit/Loss: ${:,}, Long MA Profit/Loss: ${:,}'.format(MA_profitloss, LT_profitloss))
+    # print('')
+    # print('Short MA Final Wealth: ${:,.2f}, Long MA Final Wealth: ${:,.2f}'.format(MA_wealth, LT_wealth))
+    # print('-' * 100)
 
     return df
 
