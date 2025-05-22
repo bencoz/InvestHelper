@@ -8,7 +8,7 @@ pd.set_option('mode.chained_assignment', None)
 
 
 def get_stock_data(stock, startdate, enddate, period, interval):
-    yf.pdr_override()
+    # yf.pdr_override()
     df = yf.download(tickers=stock, start=startdate, end=enddate, interval=interval, period=period)
     df.reset_index(inplace=True)
     df['date'] = df['Date'].dt.date
@@ -23,10 +23,10 @@ def ma_strategy(df, short_MA, long_MA):
     df['position'] = df['crosszero'].diff()
     df['position'].iloc[-1] = -1
     for i, row in df.iterrows():
-        if df.loc[i, 'position'] == 1:
+        if df['position'].iloc[i] == 1:
             buy_price = round(df.loc[i, 'Close'], 2)
             df.loc[i, 'buy'] = buy_price
-        if df.loc[i, 'position'] == -1:
+        if df['position'].iloc[i] == -1:
             sell_price = round(df.loc[i, 'Close'], 2)
             df.loc[i, 'sell'] = sell_price
     return df

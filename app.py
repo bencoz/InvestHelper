@@ -113,8 +113,8 @@ elif app_mode == "Stock Analyzer":
                 df = get_stock_data(stock_ticker, 
                                     start_date_dt.strftime('%Y-%m-%d'), 
                                     end_date_dt.strftime('%Y-%m-%d'), 
-                                    period_str=None,  # Use None if start/end dates are primary
-                                    interval_str=INTERVAL_CONST)
+                                    period=None,  # Use None if start/end dates are primary
+                                    interval=INTERVAL_CONST)
 
                 if df.empty:
                     st.error(f"Could not fetch data for {stock_ticker} from {start_date_input.strftime('%Y-%m-%d')} to {end_date_dt.strftime('%Y-%m-%d')}. "
