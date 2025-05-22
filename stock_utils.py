@@ -188,7 +188,7 @@ def generate_portfolio(stock_prices, total_budget, option='random'):
         # Calculate the budget for each stock
         stock_budget = budget // num_stocks
         # Allocate an equal budget to each stock
-        for stock, mean_price, curr_price in stock_prices:
+        for stock, mean_price, curr_price, _diff in stock_prices:
             # Calculate the number of shares that can be purchased with the budget for this stock
             shares_to_buy = stock_budget // mean_price
             # Calculate the total cost of the shares to buy

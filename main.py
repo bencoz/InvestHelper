@@ -1,6 +1,6 @@
 import yfinance as yf
 
-from constants import dividend_stocks, growth_stocks, index_funds
+from constants import dividend_stocks, growth_stocks, index_funds, to_buy
 from io_utils import query_yes_no
 from stock_utils import generate_portfolio
 
@@ -18,6 +18,7 @@ while True:
 dividend_investing = query_yes_no("Do you want to invest in high dividend stocks? ")
 growth_investing = query_yes_no("Do you want to invest in growth stocks? ")
 index_investing = query_yes_no("Do you want to invest in index funds? ")
+to_buy_investing = query_yes_no("Do you want to buy specific stocks? ")
 
 # Step 2: Add stock data based on user-selected options
 optional_stocks = []
@@ -30,7 +31,10 @@ if growth_investing:
 if index_investing:
     optional_stocks.extend(index_funds)
 
-PERIOD = '2y'
+if to_buy_investing:
+    optional_stocks.extend(to_buy)
+
+PERIOD = '1y'
 
 # Step 3: Scan suitable stocks for mean price
 stocks = yf.Tickers(optional_stocks)
@@ -51,7 +55,7 @@ if VERBOSE:
     print("=======================")
 
 # Step 4: Allocate investment amount among selected stocks
-portfolio = generate_portfolio(stock_prices=suitable_stocks, total_budget=amount)
+portfolio = generate_portfolio(stock_prices=suitable_stocks, total_budget=amount, option='equal')
 
 # Step 5: Generate report or output for user
 print("portfolio:")

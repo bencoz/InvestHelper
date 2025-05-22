@@ -5,3 +5,5 @@ growth_stocks = ['AMAT', 'AMD', 'AMZN', 'ARM', 'AAPL', 'CRM', 'DIS', 'DOCN', 'GL
                  'MELI', 'NFLX', 'NVDA', 'PANW', 'PYPL', 'SNOW', 'TSLA']
 
 index_funds = ['DIA', 'EEM', 'EFA', 'EWJ', 'IWM', 'QQQ', 'SPY', 'VGK', 'VOO', 'VTI', 'VYM']
+
+to_buy = ['AMZN', 'BLK', 'ENB', 'IBIT', 'TSM']
