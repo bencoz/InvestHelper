@@ -3,15 +3,61 @@ import yfinance as yf
 import numpy as np
 import math
 import pandas as pd
+from datetime import datetime, date # Ensure datetime and date are imported
 
 pd.set_option('mode.chained_assignment', None)
 
 
-def get_stock_data(stock, startdate, enddate, period, interval):
-    yf.pdr_override()
-    df = yf.download(tickers=stock, start=startdate, end=enddate, interval=interval, period=period)
+def get_stock_data(stock, startdate, enddate, period_str, interval_str): # Renamed parameters for clarity
+    # yf.pdr_override() # Removed as requested
+    
+    # Use period_str and interval_str for yfinance call
+    df = yf.download(tickers=stock, start=startdate, end=enddate, interval=interval_str, period=period_str, multi_level_index=False)
+    
+    if df.empty:
+        return pd.DataFrame()
+
     df.reset_index(inplace=True)
+
+    # Logic to find and rename date column
+    date_col_found = False
+    if 'Datetime' in df.columns:
+        df.rename(columns={'Datetime': 'Date'}, inplace=True)
+        date_col_found = True
+    elif 'Date' in df.columns: # Already named 'Date'
+        date_col_found = True
+    elif 'index' in df.columns:
+        # Check if the 'index' column actually contains date-like information
+        if not df['index'].empty and isinstance(df['index'].iloc[0], (datetime, pd.Timestamp, date)):
+            df.rename(columns={'index': 'Date'}, inplace=True)
+            date_col_found = True
+        # Add a check for string dates that might be in 'index' if yf changes format (less common)
+        elif not df['index'].empty and isinstance(df['index'].iloc[0], str):
+            try:
+                pd.to_datetime(df['index'].iloc[0]) # Try converting first element
+                df.rename(columns={'index': 'Date'}, inplace=True)
+                date_col_found = True
+            except (ValueError, TypeError):
+                pass # Not a convertible date string
+
+    if not date_col_found:
+        # If no recognizable date column is found after checking common names
+        return pd.DataFrame() # Return empty DataFrame
+
+    # Ensure 'Date' column is datetime type
+    try:
+        df['Date'] = pd.to_datetime(df['Date'])
+    except Exception:
+        # If conversion fails (e.g., column was misidentified as 'Date' but isn't convertible)
+        return pd.DataFrame()
+
+    # Create lowercase 'date' column with just the date part
+    # This assumes 'Date' (capitalized) now correctly refers to the datetime objects.
     df['date'] = df['Date'].dt.date
+    
+    # Explicitly check for 'Close' column existence (optional here, as app.py might catch it)
+    # if 'Close' not in df.columns:
+    #     return pd.DataFrame() # Or raise an error
 
     return df
 
@@ -21,7 +67,7 @@ def ma_strategy(df, short_MA, long_MA):
     df['short_MA'] = df['Close'].rolling(int(short_MA)).mean()
     df['crosszero'] = np.where(df['short_MA'] < df['long_MA'], 1.0, 0.0)
     df['position'] = df['crosszero'].diff()
-    df['position'].iloc[-1] = -1
+    df.loc[df.index[-1], 'position'] = -1
     for i, row in df.iterrows():
         if df.loc[i, 'position'] == 1:
             buy_price = round(df.loc[i, 'Close'], 2)
@@ -34,11 +80,11 @@ def ma_strategy(df, short_MA, long_MA):
 
 def buy_sell_signals(df, stock, start_date, end_date):
     totalprofit = 0
-    print('Stock: {}'.format(stock))
-    print('Period: {} - {}'.format(start_date, end_date))
-    print('-' * 57)
-    print('{:^7}{:^10}{:^15}{:^10}{:^15}'.format('S/N', 'Buy Date', 'Buy Price($)', 'Sell Date', 'Sell Price($)'))
-    print('-' * 57)
+    # print('Stock: {}'.format(stock))
+    # print('Period: {} - {}'.format(start_date, end_date))
+    # print('-' * 57)
+    # print('{:^7}{:^10}{:^15}{:^10}{:^15}'.format('S/N', 'Buy Date', 'Buy Price($)', 'Sell Date', 'Sell Price($)'))
+    # print('-' * 57)
 
     for i, row in df.iterrows():
         if df.loc[i, 'position'] == 1:
@@ -51,7 +97,7 @@ def buy_sell_signals(df, stock, start_date, end_date):
             profit = round(profit, 2)
             totalprofit = totalprofit + profit
             totalprofit = round(totalprofit, 2)
-            print('{:^7}{}{:^15}{}{:^15}'.format(i, buydate, buy_price, selldate, sell_price))
+            # print('{:^7}{}{:^15}{}{:^15}'.format(i, buydate, buy_price, selldate, sell_price))
 
     return df
 
@@ -70,20 +116,21 @@ def backtest(df, stock, startdate, enddate, initial_wealth):
     MA_wealth = initial_wealth  # moving average wealth
     LT_wealth = initial_wealth  # long-term wealth
     inital_sell = 0
-    df['position'].iloc[-1] = -1
+    df.loc[df.index[-1], 'position'] = -1
 
-    print('Stock: {}'.format(stock))
-    print('Period: {} - {}'.format(startdate, enddate))
-    print('Initial Wealth: {}'.format(initial_wealth))
-    print('-' * 100)
-    print('{:^7}{:^15}{:^10}{:^15}{:^20}{:^20}{:^10}{:^20}{:^20}{:^20}{:^20}'.format('Sr. No', 'Buy Date',
-                                                                                     'Buy Price($)', 'Sell Date',
-                                                                                     'Sell Price($)',
-                                                                                     'Investment($)', 'Qty',
-                                                                                     'total_buy_p', 'total_sell_p',
-                                                                                     'profitloss', 'MA_wealth'))
 
-    print('-' * 100)
+    # print('Stock: {}'.format(stock))
+    # print('Period: {} - {}'.format(startdate, enddate))
+    # print('Initial Wealth: {}'.format(initial_wealth))
+    # print('-' * 100)
+    # print('{:^7}{:^15}{:^10}{:^15}{:^20}{:^20}{:^10}{:^20}{:^20}{:^20}{:^20}'.format('Sr. No', 'Buy Date',
+                                                                                     # 'Buy Price($)', 'Sell Date',
+                                                                                     # 'Sell Price($)',
+                                                                                     # 'Investment($)', 'Qty',
+                                                                                     # 'total_buy_p', 'total_sell_p',
+                                                                                     # 'profitloss', 'MA_wealth'))
+
+    # print('-' * 100)
     for i, row in df.iterrows():
         if position == 0:
             if df.loc[i, 'position'] == 1:
@@ -114,10 +161,10 @@ def backtest(df, stock, startdate, enddate, initial_wealth):
                 MA_wealth = round(balance + total_sell_p, 2)
                 balance = round(balance, 2)
 
-                print('{:^7}{}{:^15}{}{:^15}{:^15}{:^15}{:^20}{:^20}{:^10}{:^10}'.format(i, buy_d, buy_p, sell_d,
-                                                                                         sell_p, MA_wealth, qty,
-                                                                                         total_buy_p, total_sell_p,
-                                                                                         profitloss, MA_wealth))
+                # print('{:^7}{}{:^15}{}{:^15}{:^15}{:^15}{:^20}{:^20}{:^10}{:^10}'.format(i, buy_d, buy_p, sell_d,
+                                                                                         # sell_p, MA_wealth, qty,
+                                                                                         # total_buy_p, total_sell_p,
+                                                                                         # profitloss, MA_wealth))
 
                 sell_balance = balance + total_sell_p
                 position = 0
@@ -147,11 +194,11 @@ def backtest(df, stock, startdate, enddate, initial_wealth):
     MA_profitloss = round(MA_profitloss, 2)
     LT_profitloss = round(LT_profitloss, 2)
 
-    print('-' * 100)
-    print('Short MA Profit/Loss: ${:,}, Long MA Profit/Loss: ${:,}'.format(MA_profitloss, LT_profitloss))
-    print('')
-    print('Short MA Final Wealth: ${:,.2f}, Long MA Final Wealth: ${:,.2f}'.format(MA_wealth, LT_wealth))
-    print('-' * 100)
+    # print('-' * 100)
+    # print('Short MA Profit/Loss: ${:,}, Long MA Profit/Loss: ${:,}'.format(MA_profitloss, LT_profitloss))
+    # print('')
+    # print('Short MA Final Wealth: ${:,.2f}, Long MA Final Wealth: ${:,.2f}'.format(MA_wealth, LT_wealth))
+    # print('-' * 100)
 
     return df
 
