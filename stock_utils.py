@@ -263,3 +263,154 @@ def generate_portfolio(stock_prices, total_budget, option='random'):
             portfolio.append((stock, shares_to_buy, mean_price, curr_price))
 
     return portfolio
+
+
+def get_stock_sector(ticker_symbol: str):
+    """
+    Fetches the sector for a given stock ticker symbol.
+    Args:
+        ticker_symbol (str): The stock ticker symbol.
+    Returns:
+        str: The sector of the stock, or "Unknown" if not found or an error occurs.
+    """
+    try:
+        ticker = yf.Ticker(ticker_symbol)
+        sector = ticker.info.get('sector')
+        if sector:
+            return sector
+        else:
+            return "Unknown"
+    except Exception as e:
+        # print(f"Error fetching sector for {ticker_symbol}: {e}") # Optional: for debugging
+        return "Unknown"
+
+
+def calculate_diversification_score(portfolio_df: pd.DataFrame):
+    """
+    Calculates the diversification score of a given portfolio based on sector concentration.
+    Args:
+        portfolio_df (pd.DataFrame): DataFrame with 'symbol' and 'Qty' columns.
+    Returns:
+        tuple: (float, pd.DataFrame) - The diversification score (0-100) and the processed DataFrame.
+               Returns (0.0, original_portfolio_df) if calculation is not possible early.
+               Returns (None, original_portfolio_df) if critical data fetching fails.
+    """
+    if not isinstance(portfolio_df, pd.DataFrame) or portfolio_df.empty:
+        return 0.0, portfolio_df # Return original df
+    if not all(col in portfolio_df.columns for col in ['symbol', 'Qty']):
+        return 0.0, portfolio_df # Return original df
+
+    # Make a copy to avoid modifying the original DataFrame
+    df = portfolio_df.copy()
+    # Initialize columns that might not get populated if errors occur
+    df['sector'] = "Unknown"
+    df['current_price'] = np.nan
+    df['market_value'] = np.nan
+
+    # Fetch Sector Information
+    df['sector'] = df['symbol'].apply(get_stock_sector)
+
+    # Fetch Current Prices and Calculate Market Value
+    df['current_price'] = df['symbol'].apply(lambda x: yf.Ticker(x).history(period='1d')['Close'].iloc[-1] if yf.Ticker(x).history(period='1d')['Close'].shape[0] > 0 else np.nan)
+    
+    # Drop rows where current price could not be fetched
+    df.dropna(subset=['current_price'], inplace=True)
+    if df.empty: # If all price fetches failed
+        return 0.0, portfolio_df # Return original df, score 0
+
+    df['market_value'] = df['Qty'] * df['current_price']
+    
+    # Re-check after market_value calculation, as Qty could be 0
+    df.dropna(subset=['market_value'], inplace=True) # if Qty is 0 or current_price was NaN
+    if df.empty:
+        return 0.0, portfolio_df
+
+
+    # Calculate Total Portfolio Value
+    total_portfolio_value = df['market_value'].sum()
+    if total_portfolio_value == 0:
+        return 0.0, df # Return processed df but score 0
+
+    # Calculate Sector Weights
+    sector_market_values = df.groupby('sector')['market_value'].sum()
+    sector_weights = sector_market_values / total_portfolio_value
+
+    # Calculate HHI Diversification Score
+    hhi = (sector_weights ** 2).sum()
+    diversification_score = (1 - hhi) * 100
+    
+    # Ensure score is between 0 and 100
+    diversification_score = max(0, min(diversification_score, 100))
+
+    return diversification_score, df
+
+
+def suggest_rebalancing_actions(portfolio_df: pd.DataFrame, diversification_score: float):
+    """
+    Suggests rebalancing actions based on portfolio composition and diversification score.
+    Args:
+        portfolio_df (pd.DataFrame): DataFrame with 'symbol', 'Qty', 'sector', 'market_value'.
+                                     Assumed to be processed by calculate_diversification_score.
+        diversification_score (float): The current diversification score of the portfolio.
+    Returns:
+        list: A list of string-based suggestions.
+    """
+    suggestions = []
+    
+    # Define Thresholds
+    DIVERSIFICATION_THRESHOLD_LOW = 60.0
+    DIVERSIFICATION_THRESHOLD_GOOD = 80.0
+    SECTOR_CONCENTRATION_THRESHOLD = 35.0  # e.g., 35%
+    LOW_STOCK_COUNT_THRESHOLD = 5
+    
+    required_cols = ['symbol', 'Qty', 'sector', 'market_value']
+    if not isinstance(portfolio_df, pd.DataFrame) or portfolio_df.empty or \
+       not all(col in portfolio_df.columns for col in required_cols):
+        return ["Portfolio data is insufficient for suggestions. Ensure it has 'symbol', 'Qty', 'sector', and 'market_value' columns."]
+
+    if diversification_score >= DIVERSIFICATION_THRESHOLD_GOOD:
+        suggestions.append("Your portfolio is well-diversified based on sector concentration. No immediate rebalancing actions suggested.")
+    else:
+        total_portfolio_value = portfolio_df['market_value'].sum()
+        if total_portfolio_value == 0:
+            return ["Cannot generate suggestions: total portfolio value is zero."]
+
+        sector_allocations = portfolio_df.groupby('sector')['market_value'].sum()
+        sector_weights = (sector_allocations / total_portfolio_value) * 100  # as percentage
+        
+        # Sort sectors by weight for easier identification of concentration
+        sorted_sectors = sector_weights.sort_values(ascending=False)
+
+        # Check for low stock count
+        if len(portfolio_df['symbol'].unique()) < LOW_STOCK_COUNT_THRESHOLD:
+            suggestions.append(f"Your portfolio has {len(portfolio_df['symbol'].unique())} unique positions. Consider adding more stocks to improve diversification across different companies.")
+
+        # Check for over-concentration
+        over_concentrated_sectors = []
+        for sector, weight in sorted_sectors.items():
+            if weight > SECTOR_CONCENTRATION_THRESHOLD:
+                suggestions.append(f"Consider reducing exposure to the '{sector}' sector, which currently makes up {weight:.1f}% of your portfolio.")
+                over_concentrated_sectors.append(sector)
+        
+        # Suggest diversifying if score is low, even if no single sector is hugely over-concentrated
+        if diversification_score < DIVERSIFICATION_THRESHOLD_LOW:
+            if not over_concentrated_sectors and len(sorted_sectors) < 3 and len(sorted_sectors) > 0 : # Few sectors but none above threshold
+                 suggestions.append("Your portfolio is concentrated in a small number of sectors.")
+
+            # Suggest adding exposure to under-represented or new sectors
+            potential_new_sectors = ["Technology", "Healthcare", "Financials", "Consumer Discretionary", "Industrials", "Energy", "Utilities", "Real Estate", "Materials", "Consumer Staples"]
+            # Filter out sectors already present or 'Unknown'
+            current_sectors = [s.lower() for s in sector_weights.index.tolist() if s != "Unknown"]
+            new_sector_suggestions = [s for s in potential_new_sectors if s.lower() not in current_sectors]
+            
+            if new_sector_suggestions:
+                suggestions.append(f"Consider diversifying by adding investments in sectors like {', '.join(new_sector_suggestions[:3])}.")
+            elif not over_concentrated_sectors : # If no specific sector to reduce and no obvious new ones to add from the list.
+                 suggestions.append("Review your portfolio to ensure it's spread across a healthy number of diverse sectors.")
+
+
+        if not suggestions: # If score is between LOW and GOOD, and no specific issues found
+            suggestions.append("Your portfolio diversification is moderate. Review sector allocations for potential improvements to achieve a higher diversification score.")
+
+    suggestions.append("Always ensure your portfolio aligns with your investment goals and risk tolerance.")
+    return suggestions

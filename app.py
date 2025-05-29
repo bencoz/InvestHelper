@@ -4,7 +4,10 @@ from datetime import datetime, date # Ensure date is imported
 
 # Import functions from existing project modules
 from main import prepare_stock_selection, fetch_stock_data # get_user_investment_preferences removed as it's handled by UI
-from stock_utils import generate_portfolio, get_stock_data, ma_strategy, buy_sell_signals, backtest, RSI
+from stock_utils import (
+    generate_portfolio, get_stock_data, ma_strategy, buy_sell_signals, backtest, RSI,
+    calculate_diversification_score, suggest_rebalancing_actions
+)
 from io_utils import get_price_ma_and_wealth_plots, get_rsi_plot # Updated plotting functions
 from constants import dividend_stocks, growth_stocks, index_funds
 
@@ -15,7 +18,7 @@ st.title("AI Stock Research Assistant")
 # --- Sidebar for Navigation ---
 st.sidebar.title("Navigation")
 app_mode = st.sidebar.selectbox("Choose the app mode",
-                                ["Portfolio Generator", "Stock Analyzer"])
+                                ["Portfolio Generator", "Stock Analyzer", "Portfolio Analyzer"])
 
 # --- Portfolio Generator Mode ---
 if app_mode == "Portfolio Generator":
@@ -181,6 +184,91 @@ elif app_mode == "Stock Analyzer":
                         st.error(f"An error occurred during the stock analysis for {stock_ticker}: {e}")
                         st.error("This could be due to insufficient data for the selected period (e.g., for Moving Averages), or an issue with the underlying calculations. Try a longer date range or a different stock.")
                         st.error("Please check the console for more details if you are running this locally.")
+
+# --- Portfolio Analyzer Mode ---
+elif app_mode == "Portfolio Analyzer":
+    st.header("Portfolio Analyzer")
+
+    # Initialize session state variables for this mode
+    if 'diversification_score' not in st.session_state:
+        st.session_state.diversification_score = None
+    if 'processed_portfolio_df' not in st.session_state:
+        st.session_state.processed_portfolio_df = None
+    if 'uploaded_file_name' not in st.session_state: # To track if file changes
+        st.session_state.uploaded_file_name = None
+
+    uploaded_file = st.file_uploader("Upload your portfolio CSV file", type=["csv"])
+
+    if uploaded_file is not None:
+        # Check if it's a new file; if so, reset analysis
+        if st.session_state.uploaded_file_name != uploaded_file.name:
+            st.session_state.diversification_score = None
+            st.session_state.processed_portfolio_df = None
+            st.session_state.uploaded_file_name = uploaded_file.name
+
+        try:
+            df_uploaded = pd.read_csv(uploaded_file)
+
+            required_columns = ["symbol", "Qty"]
+            original_columns = {col.lower(): col for col in df_uploaded.columns}
+            missing_cols = [col for col in required_columns if col.lower() not in original_columns]
+
+            if missing_cols:
+                st.error(f"The uploaded CSV is missing the following required columns: {', '.join(missing_cols)}. Please ensure your CSV has 'symbol' and 'Qty' columns.")
+                st.session_state.diversification_score = None # Reset on error
+                st.session_state.processed_portfolio_df = None
+            else:
+                df_uploaded.rename(columns={original_columns['symbol']: 'symbol', original_columns['qty']: 'Qty'}, inplace=True)
+                st.success("File uploaded successfully!")
+                st.dataframe(df_uploaded.head())
+
+                # Calculate score only if not already calculated for this file
+                if st.session_state.processed_portfolio_df is None :
+                    with st.spinner("Analyzing portfolio diversification..."):
+                        score, processed_df = calculate_diversification_score(df_uploaded.copy())
+                        st.session_state.diversification_score = score
+                        st.session_state.processed_portfolio_df = processed_df
+                
+        except pd.errors.EmptyDataError:
+            st.error("The uploaded CSV file is empty. Please upload a valid CSV file.")
+            st.session_state.diversification_score = None
+            st.session_state.processed_portfolio_df = None
+        except pd.errors.ParserError:
+            st.error("The uploaded CSV file is malformed. Please ensure it is a valid CSV file.")
+            st.session_state.diversification_score = None
+            st.session_state.processed_portfolio_df = None
+        except Exception as e:
+            st.error(f"An error occurred while processing the file: {e}")
+            st.session_state.diversification_score = None
+            st.session_state.processed_portfolio_df = None
+
+    # Display score and optimization button if score is available
+    if st.session_state.diversification_score is not None:
+        score_value = st.session_state.diversification_score
+        st.metric("Portfolio Diversification Score", f"{score_value:.1f} / 100")
+
+        # Check if the score indicates a successful calculation (e.g., market value was present)
+        # A score of 0.0 can be valid (monopoly) but also an error from calculate_diversification_score if total_portfolio_value was 0
+        # We rely on processed_df having market_value if score calculation was meaningful
+        processed_df_check = st.session_state.processed_portfolio_df
+        if processed_df_check is not None and not processed_df_check.empty and 'market_value' in processed_df_check.columns and processed_df_check['market_value'].sum() > 0:
+            if st.button("Suggest Diversification Actions"):
+                with st.spinner("Generating suggestions..."):
+                    suggestions = suggest_rebalancing_actions(
+                        st.session_state.processed_portfolio_df,
+                        st.session_state.diversification_score
+                    )
+                    st.subheader("Rebalancing Suggestions:")
+                    if suggestions:
+                        for suggestion in suggestions:
+                            st.info(suggestion)
+                    else:
+                        st.info("No specific suggestions at this time.")
+        elif score_value == 0.0 : # Specifically handle 0.0 if it might mean an error from calculation
+             st.warning("Could not calculate a meaningful diversification score. This may be due to issues fetching stock data (e.g., invalid tickers, no recent price data for any stock), all quantities being zero, or an empty portfolio resulting in zero total market value. Please check your CSV file.")
+
+    elif uploaded_file is not None: # If file was uploaded but score is None (due to error during processing)
+        st.error("Failed to process the portfolio for diversification analysis. Please check the file and try again.")
 
 
 st.sidebar.info(
