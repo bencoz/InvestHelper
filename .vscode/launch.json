@@ -15,7 +15,7 @@
             "name": "debug streamlit",
             "type": "debugpy",
             "request": "launch",
-            "program": "/Users/bencohen/Projects/python/InvestHelper/.venv/bin/streamlit",
+            "program": "${workspaceFolder}/.venv/bin/streamlit",
             "args": [
                 "run",
                 "app.py"
