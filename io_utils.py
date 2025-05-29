@@ -1,5 +1,6 @@
 import sys
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 def query_yes_no(question, default="yes"):

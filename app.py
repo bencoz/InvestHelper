@@ -177,6 +177,7 @@ elif app_mode == "Stock Analyzer":
                         else:
                             st.warning("Could not extract complete backtesting wealth figures. This might happen if the analysis period is too short or data is unavailable.")
                     except Exception as e:
+                        print(e)
                         st.error(f"An error occurred during the stock analysis for {stock_ticker}: {e}")
                         st.error("This could be due to insufficient data for the selected period (e.g., for Moving Averages), or an issue with the underlying calculations. Try a longer date range or a different stock.")
                         st.error("Please check the console for more details if you are running this locally.")
