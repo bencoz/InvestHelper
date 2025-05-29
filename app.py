@@ -220,7 +220,8 @@ elif app_mode == "Portfolio Analyzer":
             else:
                 df_uploaded.rename(columns={original_columns['symbol']: 'symbol', original_columns['qty']: 'Qty'}, inplace=True)
                 st.success("File uploaded successfully!")
-                st.dataframe(df_uploaded.head())
+                st.caption("Your Uploaded Portfolio:")
+                st.dataframe(df_uploaded, height=230)
 
                 # Calculate score only if not already calculated for this file
                 if st.session_state.processed_portfolio_df is None :
