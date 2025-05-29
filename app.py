@@ -1,14 +1,26 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, date # Ensure date is imported
+import json # Added for saving ticker changes
 
 # Import functions from existing project modules
 from main import prepare_stock_selection, fetch_stock_data # get_user_investment_preferences removed as it's handled by UI
 from stock_utils import generate_portfolio, get_stock_data, ma_strategy, buy_sell_signals, backtest, RSI
 from io_utils import get_price_ma_and_wealth_plots, get_rsi_plot # Updated plotting functions
-from constants import dividend_stocks, growth_stocks, index_funds
+# Import for initial population
+from constants import dividend_stocks as initial_dividend_stocks
+from constants import growth_stocks as initial_growth_stocks
+from constants import index_funds as initial_index_funds
 
 st.set_page_config(layout="wide")
+
+# Initialize session state for stock lists if they don't exist
+if 'dividend_stocks' not in st.session_state:
+    st.session_state.dividend_stocks = list(initial_dividend_stocks)
+if 'growth_stocks' not in st.session_state:
+    st.session_state.growth_stocks = list(initial_growth_stocks)
+if 'index_funds' not in st.session_state:
+    st.session_state.index_funds = list(initial_index_funds)
 
 st.title("AI Stock Research Assistant")
 
@@ -37,10 +49,12 @@ if app_mode == "Portfolio Generator":
         else:
             with st.spinner("Generating portfolio..."):
                 # 1. Prepare stock selection
-                # Ensure constants are loaded (dividend_stocks, growth_stocks, index_funds are imported from constants.py)
+                # Use stock lists from session state
                 selected_tickers = prepare_stock_selection(
                     dividend_investing, growth_investing, index_investing,
-                    dividend_stocks, growth_stocks, index_funds
+                    st.session_state.dividend_stocks, 
+                    st.session_state.growth_stocks, 
+                    st.session_state.index_funds
                 )
 
                 if not selected_tickers:
@@ -186,3 +200,119 @@ elif app_mode == "Stock Analyzer":
 st.sidebar.info(
     "This app helps novice investors with stock research and portfolio generation."
 )
+
+# --- Manage Stock Tickers ---
+st.sidebar.title("Manage Stock Tickers")
+
+# --- Dividend Stocks ---
+st.sidebar.subheader("Dividend Stocks")
+# Use st.session_state.new_dividend_ticker directly in the logic
+st.sidebar.text_input("Add Dividend Ticker", key="new_dividend_ticker")
+if st.sidebar.button("Add", key="add_dividend_ticker_button"):
+    new_ticker = st.session_state.new_dividend_ticker.upper()
+    if new_ticker and new_ticker not in st.session_state.dividend_stocks:
+        st.session_state.dividend_stocks.append(new_ticker)
+        st.session_state.new_dividend_ticker = "" # Clear input
+        st.rerun() # Rerun to update multiselect and write
+    elif not new_ticker:
+        st.sidebar.warning("Ticker cannot be empty.")
+    else:
+        st.sidebar.warning(f"{new_ticker} is already in the list.")
+
+# Use st.session_state.remove_dividend_multiselect directly in the logic
+st.sidebar.multiselect(
+    "Select Dividend Ticker(s) to Remove",
+    options=st.session_state.get('dividend_stocks', []), 
+    key="remove_dividend_multiselect"
+)
+if st.sidebar.button("Remove Selected", key="remove_selected_dividend_button"):
+    tickers_to_remove = st.session_state.remove_dividend_multiselect
+    if tickers_to_remove:
+        st.session_state.dividend_stocks = [
+            ticker for ticker in st.session_state.dividend_stocks if ticker not in tickers_to_remove
+        ]
+        st.session_state.remove_dividend_multiselect = [] # Clear selection
+        st.rerun() # Rerun to update multiselect and write
+    else:
+        st.sidebar.warning("No tickers selected for removal.")
+
+st.sidebar.write("Current Dividend Tickers:", ", ".join(st.session_state.get('dividend_stocks', [])))
+
+# --- Growth Stocks ---
+st.sidebar.subheader("Growth Stocks")
+st.sidebar.text_input("Add Growth Ticker", key="new_growth_ticker")
+if st.sidebar.button("Add", key="add_growth_ticker_button"):
+    new_ticker = st.session_state.new_growth_ticker.upper()
+    if new_ticker and new_ticker not in st.session_state.growth_stocks:
+        st.session_state.growth_stocks.append(new_ticker)
+        st.session_state.new_growth_ticker = "" # Clear input
+        st.rerun()
+    elif not new_ticker:
+        st.sidebar.warning("Ticker cannot be empty.")
+    else:
+        st.sidebar.warning(f"{new_ticker} is already in the list.")
+
+st.sidebar.multiselect(
+    "Select Growth Ticker(s) to Remove",
+    options=st.session_state.get('growth_stocks', []), 
+    key="remove_growth_multiselect"
+)
+if st.sidebar.button("Remove Selected", key="remove_selected_growth_button"):
+    tickers_to_remove = st.session_state.remove_growth_multiselect
+    if tickers_to_remove:
+        st.session_state.growth_stocks = [
+            ticker for ticker in st.session_state.growth_stocks if ticker not in tickers_to_remove
+        ]
+        st.session_state.remove_growth_multiselect = [] # Clear selection
+        st.rerun()
+    else:
+        st.sidebar.warning("No tickers selected for removal.")
+
+st.sidebar.write("Current Growth Tickers:", ", ".join(st.session_state.get('growth_stocks', [])))
+
+# --- Index Funds ---
+st.sidebar.subheader("Index Funds")
+st.sidebar.text_input("Add Index Fund Ticker", key="new_index_fund_ticker")
+if st.sidebar.button("Add", key="add_index_fund_button"):
+    new_ticker = st.session_state.new_index_fund_ticker.upper()
+    if new_ticker and new_ticker not in st.session_state.index_funds:
+        st.session_state.index_funds.append(new_ticker)
+        st.session_state.new_index_fund_ticker = "" # Clear input
+        st.rerun()
+    elif not new_ticker:
+        st.sidebar.warning("Ticker cannot be empty.")
+    else:
+        st.sidebar.warning(f"{new_ticker} is already in the list.")
+
+st.sidebar.multiselect(
+    "Select Index Fund Ticker(s) to Remove",
+    options=st.session_state.get('index_funds', []), 
+    key="remove_index_fund_multiselect"
+)
+if st.sidebar.button("Remove Selected", key="remove_selected_index_fund_button"):
+    tickers_to_remove = st.session_state.remove_index_fund_multiselect
+    if tickers_to_remove:
+        st.session_state.index_funds = [
+            ticker for ticker in st.session_state.index_funds if ticker not in tickers_to_remove
+        ]
+        st.session_state.remove_index_fund_multiselect = [] # Clear selection
+        st.rerun()
+    else:
+        st.sidebar.warning("No tickers selected for removal.")
+
+st.sidebar.write("Current Index Funds:", ", ".join(st.session_state.get('index_funds', [])))
+
+# --- Save All Ticker Changes ---
+st.sidebar.markdown("---") # Visual separator
+if st.sidebar.button("Save Ticker Changes to File", key="save_all_tickers_button"):
+    try:
+        config_data_to_save = {
+            "dividend_stocks": st.session_state.get('dividend_stocks', []),
+            "growth_stocks": st.session_state.get('growth_stocks', []),
+            "index_funds": st.session_state.get('index_funds', [])
+        }
+        with open("config.json", 'w') as f:
+            json.dump(config_data_to_save, f, indent=2)
+        st.sidebar.success("Ticker changes saved to config.json!")
+    except Exception as e:
+        st.sidebar.error(f"Error saving tickers: {e}")
