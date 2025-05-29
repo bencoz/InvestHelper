@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px # Added import for plotly
 from datetime import datetime, date # Ensure date is imported
 
 # Import functions from existing project modules
@@ -248,11 +249,33 @@ elif app_mode == "Portfolio Analyzer":
         score_value = st.session_state.diversification_score
         st.metric("Portfolio Diversification Score", f"{score_value:.1f} / 100")
 
-        # Check if the score indicates a successful calculation (e.g., market value was present)
-        # A score of 0.0 can be valid (monopoly) but also an error from calculate_diversification_score if total_portfolio_value was 0
-        # We rely on processed_df having market_value if score calculation was meaningful
         processed_df_check = st.session_state.processed_portfolio_df
-        if processed_df_check is not None and not processed_df_check.empty and 'market_value' in processed_df_check.columns and processed_df_check['market_value'].sum() > 0:
+
+        # Display Sector Allocation Pie Chart
+        if processed_df_check is not None and not processed_df_check.empty and \
+           'sector' in processed_df_check.columns and 'market_value' in processed_df_check.columns and \
+           processed_df_check['market_value'].sum() > 0:
+            
+            st.subheader("Portfolio Sector Allocation")
+            sector_allocations = processed_df_check.groupby('sector')['market_value'].sum().reset_index()
+            
+            # Filter out sectors with zero or negligible market value for a cleaner pie chart
+            sector_allocations = sector_allocations[sector_allocations['market_value'] > 0.01]
+
+            if not sector_allocations.empty:
+                fig_sector_pie = px.pie(sector_allocations,
+                                        names='sector',
+                                        values='market_value',
+                                        title='Sector Allocation by Market Value',
+                                        hole=0.3)
+                fig_sector_pie.update_traces(textposition='inside', textinfo='percent+label')
+                st.plotly_chart(fig_sector_pie, use_container_width=True)
+            else:
+                st.write("No significant sector allocations to display in chart (all market values are too small or zero).")
+
+        # Check if the score indicates a successful calculation for suggesting actions
+        if processed_df_check is not None and not processed_df_check.empty and \
+           'market_value' in processed_df_check.columns and processed_df_check['market_value'].sum() > 0:
             if st.button("Suggest Diversification Actions"):
                 with st.spinner("Generating suggestions..."):
                     suggestions = suggest_rebalancing_actions(
