@@ -4,6 +4,11 @@ import numpy as np
 import math
 import pandas as pd
 from datetime import datetime, date # Ensure datetime and date are imported
+from cached_stock_data import get_stock_data_cached, get_current_price_cached, get_stock_sector_cached
+from parallel_processing import fetch_multiple_stocks_parallel
+import logging
+
+logger = logging.getLogger(__name__)
 
 pd.set_option('mode.chained_assignment', None)
 
@@ -11,8 +16,8 @@ pd.set_option('mode.chained_assignment', None)
 def get_stock_data(stock, startdate, enddate, period_str, interval_str): # Renamed parameters for clarity
     # yf.pdr_override() # Removed as requested
     
-    # Use period_str and interval_str for yfinance call
-    df = yf.download(tickers=stock, start=startdate, end=enddate, interval=interval_str, period=period_str, multi_level_index=False)
+    # Use cached version instead of direct yfinance call
+    df = get_stock_data_cached(stock, startdate, enddate, period_str, interval_str)
     
     if df.empty:
         return pd.DataFrame()
@@ -273,16 +278,7 @@ def get_stock_sector(ticker_symbol: str):
     Returns:
         str: The sector of the stock, or "Unknown" if not found or an error occurs.
     """
-    try:
-        ticker = yf.Ticker(ticker_symbol)
-        sector = ticker.info.get('sector')
-        if sector:
-            return sector
-        else:
-            return "Unknown"
-    except Exception as e:
-        # print(f"Error fetching sector for {ticker_symbol}: {e}") # Optional: for debugging
-        return "Unknown"
+    return get_stock_sector_cached(ticker_symbol)
 
 
 def calculate_diversification_score(portfolio_df: pd.DataFrame):
@@ -307,11 +303,18 @@ def calculate_diversification_score(portfolio_df: pd.DataFrame):
     df['current_price'] = np.nan
     df['market_value'] = np.nan
 
-    # Fetch Sector Information
-    df['sector'] = df['symbol'].apply(get_stock_sector)
+    # Fetch Sector Information in Parallel
+    logger.info(f"Fetching sector data for {len(df)} stocks in parallel")
+    symbols = df['symbol'].tolist()
+    sectors = fetch_multiple_stocks_parallel(symbols, get_stock_sector_cached, max_workers=10)
+    df['sector'] = sectors
+    # Fill None/Unknown sectors
+    df['sector'].fillna("Unknown", inplace=True)
 
-    # Fetch Current Prices and Calculate Market Value
-    df['current_price'] = df['symbol'].apply(lambda x: yf.Ticker(x).history(period='1d')['Close'].iloc[-1] if yf.Ticker(x).history(period='1d')['Close'].shape[0] > 0 else np.nan)
+    # Fetch Current Prices in Parallel
+    logger.info(f"Fetching current prices for {len(df)} stocks in parallel")
+    prices = fetch_multiple_stocks_parallel(symbols, get_current_price_cached, max_workers=10)
+    df['current_price'] = prices
     
     # Drop rows where current price could not be fetched
     df.dropna(subset=['current_price'], inplace=True)

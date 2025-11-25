@@ -11,6 +11,8 @@ from stock_utils import (
 )
 from io_utils import get_price_ma_and_wealth_plots, get_rsi_plot # Updated plotting functions
 from constants import dividend_stocks, growth_stocks, index_funds
+from cache import stock_cache
+from persistent_cache import persistent_cache
 
 st.set_page_config(layout="wide")
 
@@ -20,6 +22,17 @@ st.title("AI Stock Research Assistant")
 st.sidebar.title("Navigation")
 app_mode = st.sidebar.selectbox("Choose the app mode",
                                 ["Portfolio Generator", "Stock Analyzer", "Portfolio Analyzer"])
+
+# --- Cache Management ---
+with st.sidebar.expander("Cache Management"):
+    stats = stock_cache.get_stats()
+    st.write(f"Memory Cache: {stats['entries']} entries")
+    
+    if st.button("Clear Cache"):
+        stock_cache.clear()
+        persistent_cache.clear()
+        st.cache_data.clear()
+        st.success("Cache cleared!")
 
 # --- Portfolio Generator Mode ---
 if app_mode == "Portfolio Generator":

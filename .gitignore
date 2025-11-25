@@ -167,3 +167,4 @@ cython_debug/
 /test-videos/
 /test-traces/
 /images/
+.cache/

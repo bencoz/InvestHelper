@@ -4,6 +4,8 @@ import pandas as pd # Added import for pandas
 from constants import dividend_stocks, growth_stocks, index_funds
 from io_utils import query_yes_no
 from stock_utils import generate_portfolio
+from cached_stock_data import get_stock_data_cached
+from parallel_processing import fetch_multiple_stocks_parallel
 
 VERBOSE = False
 
@@ -37,56 +39,31 @@ def prepare_stock_selection(dividend_investing, growth_investing, index_investin
     return list(set(optional_stocks))  # Remove duplicates
 
 
+def _get_stock_stats(ticker, period):
+    """Helper to fetch data and calc stats for a single stock."""
+    df = get_stock_data_cached(ticker, startdate=None, enddate=None, period_str=period, interval_str='1d')
+    if df.empty or 'Close' not in df.columns:
+        return None
+    
+    current_price = df['Close'].iloc[-1]
+    mean_price = df['Close'].mean()
+    
+    if pd.isna(mean_price) or pd.isna(current_price):
+        return None
+        
+    return (ticker, mean_price, current_price, current_price - mean_price)
+
 def fetch_stock_data(tickers, period):
-    """Fetches stock data using yfinance and calculates mean and current prices."""
+    """Fetches stock data using cached parallel execution."""
     if not tickers:
         return []
-    stocks = yf.Tickers(tickers)
-    # Fetching 'Close' prices, ensure it's a DataFrame even with one ticker
-    stocks_data = stocks.history(period=period)
     
-    if stocks_data.empty:
-        # print(f"Warning: No data returned from yfinance for tickers: {tickers}")
-        return []
-
-    # Ensure 'Close' is present, could be MultiIndex if multiple tickers
-    if 'Close' in stocks_data:
-        stocks_data_close = stocks_data['Close']
-    elif isinstance(stocks_data.columns, pd.MultiIndex):
-        # Fallback for MultiIndex, try to get 'Close' price for each ticker
-        # This handles cases where some tickers might fail and yfinance returns a MultiIndex
-        # with 'Close' under each ticker symbol.
-        # We will process valid tickers and skip those with errors.
-        valid_tickers_data = []
-        for ticker in tickers:
-            if (ticker, 'Close') in stocks_data.columns:
-                valid_tickers_data.append(stocks_data[(ticker, 'Close')].rename(ticker))
-        if not valid_tickers_data:
-            # print(f"Warning: 'Close' price data not found for tickers: {tickers}")
-            return []
-        stocks_data_close = pd.concat(valid_tickers_data, axis=1)
-    else:
-        # print(f"Warning: 'Close' price data not found in yfinance output for tickers: {tickers}")
-        return []
-
-    if stocks_data_close.empty:
-        # print(f"Warning: 'Close' price data is empty for tickers: {tickers}")
-        return []
-
-    # If only one ticker, stocks_data_close might be a Series, convert to DataFrame
-    if isinstance(stocks_data_close, pd.Series):
-        stocks_data_close = stocks_data_close.to_frame(name=tickers[0])
-
-    stocks_current_prices = stocks_data_close.iloc[-1].tolist()
-    stocks_mean_prices = stocks_data_close.mean(axis=0).tolist()
-    stocks_prices_names = list(stocks_data_close.columns)
-
-    suitable_stocks = []
-    for stock_name, mean_price, current_price in zip(stocks_prices_names, stocks_mean_prices, stocks_current_prices):
-        if pd.isna(mean_price) or pd.isna(current_price):
-            # print(f"Warning: Skipping {stock_name} due to missing data (mean or current price).")
-            continue
-        suitable_stocks.append((stock_name, mean_price, current_price, current_price - mean_price))
+    # Use parallel processing to fetch and calculate stats
+    results = fetch_multiple_stocks_parallel(tickers, _get_stock_stats, period=period)
+    
+    # Filter out None results
+    suitable_stocks = [r for r in results if r is not None]
+    
     return suitable_stocks
 
 
