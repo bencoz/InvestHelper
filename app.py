@@ -2,6 +2,12 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px # Added import for plotly
 from datetime import datetime, date # Ensure date is imported
+import logging
+from logging_config import setup_logging
+from exceptions import InvestHelperError, DataFetchError, InvalidTickerError, InsufficientDataError
+
+# Initialize logging
+logger = setup_logging()
 
 # Import functions from existing project modules
 from main import prepare_stock_selection, fetch_stock_data # get_user_investment_preferences removed as it's handled by UI
@@ -97,8 +103,12 @@ if app_mode == "Portfolio Generator":
                                     st.metric(label="Total Portfolio Value (at current prices)", value=f"${total_investment_current_price:,.2f}")
                                     
                                     st.caption(f"Note: The 'random' allocation strategy prioritizes stocks with a larger positive difference between current and mean price. Results may vary if not all budget is used.")
+                    except DataFetchError as e:
+                        logger.error(f"Data fetch error during portfolio generation: {e}")
+                        st.error(f"Failed to fetch necessary stock data. Please check your internet connection and try again.")
                     except Exception as e:
-                        st.error(f"An unexpected error occurred during portfolio generation: {e}")
+                        logger.error(f"An unexpected error occurred during portfolio generation: {e}", exc_info=True)
+                        st.error(f"An unexpected error occurred: {e}")
                         st.error("Please check the console for more details if you are running this locally.")
 
 
@@ -126,18 +136,18 @@ elif app_mode == "Stock Analyzer":
                 # Convert start_date_input (which is a date object) to a datetime object
                 start_date_dt = datetime.combine(start_date_input, datetime.min.time())
 
-                # 1. Get stock data
-                df = get_stock_data(stock_ticker, 
-                                    start_date_dt.strftime('%Y-%m-%d'), 
-                                    end_date_dt.strftime('%Y-%m-%d'), 
-                                    period_str=None,  # Use None if start/end dates are primary
-                                    interval_str=INTERVAL_CONST)
+                try:
+                    # 1. Get stock data
+                    df = get_stock_data(stock_ticker, 
+                                        start_date_dt.strftime('%Y-%m-%d'), 
+                                        end_date_dt.strftime('%Y-%m-%d'), 
+                                        period_str=None,  # Use None if start/end dates are primary
+                                        interval_str=INTERVAL_CONST)
 
-                if df.empty:
-                    st.error(f"Could not fetch data for {stock_ticker} from {start_date_input.strftime('%Y-%m-%d')} to {end_date_dt.strftime('%Y-%m-%d')}. "
-                             "This could be due to an invalid ticker, delisting, or no data available for the selected date range.")
-                else:
-                    try:
+                    if df.empty:
+                        st.error(f"Could not fetch data for {stock_ticker} from {start_date_input.strftime('%Y-%m-%d')} to {end_date_dt.strftime('%Y-%m-%d')}. "
+                                 "This could be due to an invalid ticker, delisting, or no data available for the selected date range.")
+                    else:
                         # 2. Apply MA strategy
                         df_ma = ma_strategy(df.copy(), SHORT_MA_CONST, LONG_MA_CONST)
 
@@ -193,11 +203,14 @@ elif app_mode == "Stock Analyzer":
                             col2.metric("Buy & Hold Strategy Total Profit", f"${total_profit_lt:,.2f}")
                         else:
                             st.warning("Could not extract complete backtesting wealth figures. This might happen if the analysis period is too short or data is unavailable.")
-                    except Exception as e:
-                        print(e)
-                        st.error(f"An error occurred during the stock analysis for {stock_ticker}: {e}")
-                        st.error("This could be due to insufficient data for the selected period (e.g., for Moving Averages), or an issue with the underlying calculations. Try a longer date range or a different stock.")
-                        st.error("Please check the console for more details if you are running this locally.")
+                except DataFetchError as e:
+                    logger.error(f"Data fetch error for {stock_ticker}: {e}")
+                    st.error(f"Failed to fetch data for {stock_ticker}. Please check the ticker symbol and try again.")
+                except Exception as e:
+                    logger.error(f"An error occurred during the stock analysis for {stock_ticker}: {e}", exc_info=True)
+                    st.error(f"An error occurred during the stock analysis for {stock_ticker}: {e}")
+                    st.error("This could be due to insufficient data for the selected period (e.g., for Moving Averages), or an issue with the underlying calculations. Try a longer date range or a different stock.")
+                    st.error("Please check the console for more details if you are running this locally.")
 
 # --- Portfolio Analyzer Mode ---
 elif app_mode == "Portfolio Analyzer":
@@ -245,14 +258,17 @@ elif app_mode == "Portfolio Analyzer":
                         st.session_state.processed_portfolio_df = processed_df
                 
         except pd.errors.EmptyDataError:
+            logger.warning("Uploaded empty CSV file")
             st.error("The uploaded CSV file is empty. Please upload a valid CSV file.")
             st.session_state.diversification_score = None
             st.session_state.processed_portfolio_df = None
         except pd.errors.ParserError:
+            logger.warning("Uploaded malformed CSV file")
             st.error("The uploaded CSV file is malformed. Please ensure it is a valid CSV file.")
             st.session_state.diversification_score = None
             st.session_state.processed_portfolio_df = None
         except Exception as e:
+            logger.error(f"Error processing uploaded file: {e}", exc_info=True)
             st.error(f"An error occurred while processing the file: {e}")
             st.session_state.diversification_score = None
             st.session_state.processed_portfolio_df = None
@@ -306,7 +322,6 @@ elif app_mode == "Portfolio Analyzer":
 
     elif uploaded_file is not None: # If file was uploaded but score is None (due to error during processing)
         st.error("Failed to process the portfolio for diversification analysis. Please check the file and try again.")
-
 
 st.sidebar.info(
     "This app helps novice investors with stock research and portfolio generation."

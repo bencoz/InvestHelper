@@ -65,5 +65,18 @@
   "performance": {
     "max_parallel_requests": 10,
     "request_timeout_seconds": 30
+  },
+  "logging": {
+    "level": "INFO",
+    "log_to_file": true,
+    "log_to_console": true,
+    "log_dir": "logs",
+    "max_file_size_mb": 10,
+    "backup_count": 5
+  },
+  "retry": {
+    "max_retries": 3,
+    "base_delay": 1.0,
+    "max_delay": 10.0
   }
 }

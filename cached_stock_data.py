@@ -5,6 +5,9 @@ from cache import stock_cache
 from persistent_cache import persistent_cache
 import logging
 import numpy as np
+from decorators import retry_with_backoff
+from exceptions import DataFetchError, InvalidTickerError
+from requests.exceptions import HTTPError
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +47,11 @@ def get_stock_data_cached(
     
     # Cache miss - fetch from API
     logger.debug(f"Cache miss for {stock}, fetching from API")
-    data = _fetch_stock_data(stock, startdate, enddate, period_str, interval_str)
+    try:
+        data = _fetch_stock_data(stock, startdate, enddate, period_str, interval_str)
+    except DataFetchError:
+        # Logged in _fetch_stock_data
+        return pd.DataFrame()
     
     # Cache the result
     if not data.empty:
@@ -53,9 +60,9 @@ def get_stock_data_cached(
     
     return data
 
+@retry_with_backoff(exceptions=(HTTPError, ConnectionError, TimeoutError))
 def _fetch_stock_data(stock, startdate, enddate, period_str, interval_str) -> pd.DataFrame:
     """Internal function to actually fetch data - original implementation."""
-    # This is the original get_stock_data logic from stock_utils.py
     try:
         df = yf.download(
             tickers=stock,
@@ -66,10 +73,12 @@ def _fetch_stock_data(stock, startdate, enddate, period_str, interval_str) -> pd
             multi_level_index=False,
             progress=False
         )
+        if df.empty:
+             logger.warning(f"No data returned for {stock}")
         return df
     except Exception as e:
         logger.error(f"Error fetching data for {stock}: {e}")
-        return pd.DataFrame()
+        raise DataFetchError(f"Failed to fetch data for {stock}") from e
 
 def get_current_price_cached(symbol: str, use_cache: bool = True) -> float:
     """Get current stock price with caching."""
@@ -82,16 +91,24 @@ def get_current_price_cached(symbol: str, use_cache: bool = True) -> float:
     
     # Fetch from API
     try:
+        price = _fetch_current_price(symbol)
+        if not np.isnan(price):
+            stock_cache.set(cache_key, price)
+        return price
+    except Exception as e:
+        logger.error(f"Error fetching price for {symbol}: {e}")
+        return np.nan
+
+@retry_with_backoff(exceptions=(HTTPError, ConnectionError, TimeoutError))
+def _fetch_current_price(symbol: str) -> float:
+    try:
         ticker = yf.Ticker(symbol)
         hist = ticker.history(period='1d')
         if len(hist) > 0:
-            price = hist['Close'].iloc[-1]
-            stock_cache.set(cache_key, price)
-            return price
+            return hist['Close'].iloc[-1]
+        return np.nan
     except Exception as e:
-        logger.error(f"Error fetching price for {symbol}: {e}")
-    
-    return np.nan
+        raise DataFetchError(f"Failed to fetch price for {symbol}") from e
 
 def get_stock_sector_cached(ticker_symbol: str, use_cache: bool = True) -> str:
     """Get stock sector with caching."""
@@ -102,13 +119,21 @@ def get_stock_sector_cached(ticker_symbol: str, use_cache: bool = True) -> str:
         if sector is not None:
             return sector
     
-    # Fetch from API (original logic)
+    # Fetch from API
     try:
-        ticker = yf.Ticker(ticker_symbol)
-        sector = ticker.info.get('sector', 'Unknown')
-        if sector:
+        sector = _fetch_stock_sector(ticker_symbol)
+        if sector != "Unknown":
             stock_cache.set(cache_key, sector)
         return sector
     except Exception as e:
         logger.warning(f"Error fetching sector for {ticker_symbol}: {e}")
         return "Unknown"
+
+@retry_with_backoff(exceptions=(HTTPError, ConnectionError, TimeoutError))
+def _fetch_stock_sector(ticker_symbol: str) -> str:
+    try:
+        ticker = yf.Ticker(ticker_symbol)
+        sector = ticker.info.get('sector', 'Unknown')
+        return sector
+    except Exception as e:
+         raise DataFetchError(f"Failed to fetch sector for {ticker_symbol}") from e
