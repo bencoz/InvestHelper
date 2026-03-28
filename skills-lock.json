@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "skills": {
+    "building-streamlit-chat-ui": {
+      "source": "streamlit/agent-skills",
+      "sourceType": "github",
+      "computedHash": "342e84e654e65f9c7fa72ea26af0682e71d8d4ae2682c074738bf7b7d3b9d059"
+    },
+    "building-streamlit-custom-components-v2": {
+      "source": "streamlit/agent-skills",
+      "sourceType": "github",
+      "computedHash": "fe83cd21ee4022dad43b2f1f4027df9d66a1c57e906e5182975ef66330d16d7b"
+    },
+    "building-streamlit-multipage-apps": {
+      "source": "streamlit/agent-skills",
+      "sourceType": "github",
+      "computedHash": "6b62792f177c3b4c4b25c3118420f6c1f48acc57b3f878cf3aa61730141ef5a7"
+    },
+    "creating-streamlit-themes": {
+      "source": "streamlit/agent-skills",
+      "sourceType": "github",
+      "computedHash": "5550a4f35e373f1dfbcc042bcf2c647aa7f3afd3788c7191328fd4b4888ad8fb"
+    },
+    "improving-streamlit-design": {
+      "source": "streamlit/agent-skills",
+      "sourceType": "github",
+      "computedHash": "337e7a87919bc40ca0c134f1fbedc57fac31c20e1d8c57a2b15e5e94a0e4ece0"
+    },
+    "optimizing-streamlit-performance": {
+      "source": "streamlit/agent-skills",
+      "sourceType": "github",
+      "computedHash": "f68f56c0a8531de0aef292a20234d35671f626b941844f01de14d456bfaece48"
+    },
+    "organizing-streamlit-code": {
+      "source": "streamlit/agent-skills",
+      "sourceType": "github",
+      "computedHash": "ac4da31516fc819fb188ce2c6aa5756fc0e1bf5fb7d33118e167e0c85aa85cb0"
+    },
+    "using-streamlit-session-state": {
+      "source": "streamlit/agent-skills",
+      "sourceType": "github",
+      "computedHash": "aebf9e6a9a6ac98253cbbab3e31f447e53e9173e865836182d4da060aad63cef"
+    }
+  }
+}
