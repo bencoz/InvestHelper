@@ -1,6 +1,7 @@
 import yfinance as yf
 import pandas as pd
 import logging
+from typing import Optional, Tuple, List
 
 from constants import dividend_stocks, growth_stocks, index_funds
 from io_utils import query_yes_no
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 VERBOSE = False
 
 
-def get_user_investment_preferences():
+def get_user_investment_preferences() -> Tuple[float, bool, bool, bool]:
     """Gets user input for investment amount and preferences."""
     while True:
         try:
@@ -30,8 +31,8 @@ def get_user_investment_preferences():
     return amount, dividend_investing, growth_investing, index_investing
 
 
-def prepare_stock_selection(dividend_investing, growth_investing, index_investing,
-                            dividend_stocks, growth_stocks, index_funds):
+def prepare_stock_selection(dividend_investing: bool, growth_investing: bool, index_investing: bool,
+                            dividend_stocks: List[str], growth_stocks: List[str], index_funds: List[str]) -> List[str]:
     """Prepares the list of stock tickers based on user preferences."""
     optional_stocks = []
     if dividend_investing:
@@ -43,7 +44,7 @@ def prepare_stock_selection(dividend_investing, growth_investing, index_investin
     return list(set(optional_stocks))  # Remove duplicates
 
 
-def _get_stock_stats(ticker, period):
+def _get_stock_stats(ticker: str, period: str) -> Optional[Tuple[str, float, float, float]]:
     """Helper to fetch data and calc stats for a single stock."""
     df = get_stock_data_cached(ticker, startdate=None, enddate=None, period_str=period, interval_str='1d')
     if df.empty or 'Close' not in df.columns:
@@ -57,7 +58,7 @@ def _get_stock_stats(ticker, period):
         
     return (ticker, mean_price, current_price, current_price - mean_price)
 
-def fetch_stock_data(tickers, period):
+def fetch_stock_data(tickers: List[str], period: str) -> List[Tuple[str, float, float, float]]:
     """Fetches stock data using cached parallel execution."""
     if not tickers:
         return []

@@ -3,10 +3,14 @@ import yfinance as yf
 import numpy as np
 import math
 import pandas as pd
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Any
 from datetime import datetime, date # Ensure datetime and date are imported
 from cached_stock_data import get_stock_data_cached, get_current_price_cached, get_stock_sector_cached
 from parallel_processing import fetch_multiple_stocks_parallel
+from constants import (
+    RSI_PERIOD, DIVERSIFICATION_THRESHOLD_LOW, DIVERSIFICATION_THRESHOLD_GOOD,
+    SECTOR_CONCENTRATION_THRESHOLD, LOW_STOCK_COUNT_THRESHOLD
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -224,8 +228,8 @@ def RSI(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series]:
     change.equals(change_up + change_down)
 
     # Calculate the rolling average of average up and average down
-    avg_up = change_up.rolling(14).mean()
-    avg_down = change_down.rolling(14).mean().abs()
+    avg_up = change_up.rolling(RSI_PERIOD).mean()
+    avg_down = change_down.rolling(RSI_PERIOD).mean().abs()
     rsi = 100 * avg_up / (avg_up + avg_down)
 
     # Map numeric index to DatetimeIndex so charts show dates on x-axis
@@ -276,7 +280,7 @@ def generate_portfolio(stock_prices: List[Tuple], total_budget: float, option: s
     return portfolio
 
 
-def get_stock_sector(ticker_symbol: str):
+def get_stock_sector(ticker_symbol: str) -> str:
     """
     Fetches the sector for a given stock ticker symbol.
     Args:
@@ -287,7 +291,7 @@ def get_stock_sector(ticker_symbol: str):
     return get_stock_sector_cached(ticker_symbol)
 
 
-def calculate_diversification_score(portfolio_df: pd.DataFrame):
+def calculate_diversification_score(portfolio_df: pd.DataFrame) -> Tuple[float, pd.DataFrame]:
     """
     Calculates the diversification score of a given portfolio based on sector concentration.
     Args:
@@ -354,7 +358,7 @@ def calculate_diversification_score(portfolio_df: pd.DataFrame):
     return diversification_score, df
 
 
-def suggest_rebalancing_actions(portfolio_df: pd.DataFrame, diversification_score: float):
+def suggest_rebalancing_actions(portfolio_df: pd.DataFrame, diversification_score: float) -> List[str]:
     """
     Suggests rebalancing actions based on portfolio composition and diversification score.
     Args:
@@ -365,12 +369,6 @@ def suggest_rebalancing_actions(portfolio_df: pd.DataFrame, diversification_scor
         list: A list of string-based suggestions.
     """
     suggestions = []
-    
-    # Define Thresholds
-    DIVERSIFICATION_THRESHOLD_LOW = 60.0
-    DIVERSIFICATION_THRESHOLD_GOOD = 80.0
-    SECTOR_CONCENTRATION_THRESHOLD = 35.0  # e.g., 35%
-    LOW_STOCK_COUNT_THRESHOLD = 5
     
     required_cols = ['symbol', 'Qty', 'sector', 'market_value']
     if not isinstance(portfolio_df, pd.DataFrame) or portfolio_df.empty or \

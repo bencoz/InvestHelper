@@ -164,39 +164,39 @@ PRICE_FETCH_TIMEOUT: Final[int] = 30  # seconds
 ## Implementation Steps
 
 1. **Create utility functions** (1 hour)
-   - [ ] Extract `get_current_price()` function
-   - [ ] Extract `get_stock_sector()` helper (already exists, but improve)
-   - [ ] Add proper error handling to all helpers
-   - [ ] Add docstrings with type hints
+   - [x] Extract `get_current_price()` function
+   - [x] Extract `get_stock_sector()` helper (already exists, but improve)
+   - [x] Add proper error handling to all helpers
+   - [x] Add docstrings with type hints
 
 2. **Add logging infrastructure** (30 mins)
-   - [ ] Create `logger.py` module
-   - [ ] Configure logging with file and console handlers
-   - [ ] Add log rotation (optional)
+   - [x] Create `logger.py` module
+   - [x] Configure logging with file and console handlers
+   - [x] Add log rotation (optional)
 
 3. **Replace print statements** (45 mins)
-   - [ ] Update `main.py`
-   - [ ] Update `stock_utils.py`
-   - [ ] Remove or update commented print statements
-   - [ ] Update `VERBOSE` flag to use logging levels
+   - [x] Update `main.py`
+   - [x] Update `stock_utils.py`
+   - [x] Remove or update commented print statements
+   - [x] Update `VERBOSE` flag to use logging levels
 
 4. **Add type hints** (45 mins)
-   - [ ] Add to all public functions in `stock_utils.py`
-   - [ ] Add to all public functions in `main.py`
-   - [ ] Add to `app.py` helper functions
-   - [ ] Run `mypy` for type checking
+   - [x] Add to all public functions in `stock_utils.py`
+   - [x] Add to all public functions in `main.py`
+   - [x] Add to `app.py` helper functions
+   - [x] Run `mypy` for type checking
 
 5. **Consolidate constants** (30 mins)
-   - [ ] Move magic numbers to `constants.py`
-   - [ ] Update all references
-   - [ ] Document each constant
+   - [x] Move magic numbers to `constants.py`
+   - [x] Update all references
+   - [x] Document each constant
 
 ## Testing Requirements
 
-- [ ] All existing tests pass after refactoring
-- [ ] No functional changes (pure refactoring)
-- [ ] Type checking passes with `mypy`
-- [ ] Code coverage maintained or improved
+- [x] All existing tests pass after refactoring
+- [x] No functional changes (pure refactoring)
+- [x] Type checking passes with `mypy`
+- [x] Code coverage maintained or improved
 
 ## Success Criteria
 

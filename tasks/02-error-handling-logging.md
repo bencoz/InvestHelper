@@ -251,35 +251,35 @@ def get_stock_sector(ticker_symbol: str) -> str:
 ## Implementation Steps
 
 1. **Create custom exceptions** (30 mins)
-   - [ ] Create `exceptions.py` module
-   - [ ] Define base exception class
-   - [ ] Define specific exceptions for common errors
-   - [ ] Add docstrings
+   - [x] Create `exceptions.py` module
+   - [x] Define base exception class
+   - [x] Define specific exceptions for common errors
+   - [x] Add docstrings
 
 2. **Implement logging infrastructure** (1 hour)
-   - [ ] Create `logging_config.py`
-   - [ ] Implement `setup_logging()` function
-   - [ ] Add rotating file handlers
-   - [ ] Create separate error log
-   - [ ] Add `.gitignore` entry for logs/
+   - [x] Create `logging_config.py`
+   - [x] Implement `setup_logging()` function
+   - [x] Add rotating file handlers
+   - [x] Create separate error log
+   - [x] Add `.gitignore` entry for logs/
 
 3. **Implement retry mechanism** (1 hour)
-   - [ ] Create `decorators.py` module
-   - [ ] Implement `retry_with_backoff()` decorator
-   - [ ] Add configuration for retry parameters
-   - [ ] Test with flaky network conditions
+   - [x] Create `decorators.py` module
+   - [x] Implement `retry_with_backoff()` decorator
+   - [x] Add configuration for retry parameters
+   - [x] Test with flaky network conditions
 
 4. **Update error handling** (1.5 hours)
-   - [ ] Replace generic exceptions in `stock_utils.py`
-   - [ ] Replace generic exceptions in `main.py`
-   - [ ] Replace generic exceptions in `app.py`
-   - [ ] Add logging to all error paths
-   - [ ] Use retry decorator for API calls
+   - [x] Replace generic exceptions in `stock_utils.py`
+   - [x] Replace generic exceptions in `main.py`
+   - [x] Replace generic exceptions in `app.py`
+   - [x] Add logging to all error paths
+   - [x] Use retry decorator for API calls
 
 5. **Update UI error messages** (30 mins)
-   - [ ] Create user-friendly error messages
-   - [ ] Map technical errors to user messages
-   - [ ] Add suggestions for common errors
+   - [x] Create user-friendly error messages
+   - [x] Map technical errors to user messages
+   - [x] Add suggestions for common errors
 
 ## File Structure
 
@@ -318,11 +318,11 @@ Add to `config.json` or create `logging_config.json`:
 
 ## Testing Requirements
 
-- [ ] Test each custom exception is raised correctly
-- [ ] Test retry logic with mocked failures
-- [ ] Test logging to file and console
-- [ ] Test log rotation
-- [ ] Verify error messages are user-friendly in UI
+- [x] Test each custom exception is raised correctly
+- [x] Test retry logic with mocked failures
+- [x] Test logging to file and console
+- [x] Test log rotation
+- [x] Verify error messages are user-friendly in UI
 
 ## Success Criteria
 

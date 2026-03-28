@@ -34,3 +34,22 @@ if not all(isinstance(stock, str) for stock_list in [dividend_stocks, growth_sto
 # Example of how these lists would be used in main.py (no changes needed in main.py):
 # from constants import dividend_stocks, growth_stocks, index_funds
 # ... rest of main.py logic ...
+
+from typing import Final
+
+# Technical Analysis Parameters
+MA_SHORT_PERIOD: Final[int] = 50
+MA_LONG_PERIOD: Final[int] = 200
+RSI_PERIOD: Final[int] = 14
+INITIAL_WEALTH: Final[float] = 1000.0
+
+# Portfolio Analysis Thresholds
+DIVERSIFICATION_THRESHOLD_LOW: Final[float] = 60.0
+DIVERSIFICATION_THRESHOLD_GOOD: Final[float] = 80.0
+SECTOR_CONCENTRATION_THRESHOLD: Final[float] = 35.0
+LOW_STOCK_COUNT_THRESHOLD: Final[int] = 5
+
+# Data Fetching
+DEFAULT_PERIOD: Final[str] = '2y'
+DEFAULT_INTERVAL: Final[str] = '1d'
+PRICE_FETCH_TIMEOUT: Final[int] = 30  # seconds

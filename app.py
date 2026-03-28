@@ -16,7 +16,10 @@ from stock_utils import (
     calculate_diversification_score, suggest_rebalancing_actions
 )
 from io_utils import get_price_ma_and_wealth_plots, get_rsi_plot # Updated plotting functions
-from constants import dividend_stocks, growth_stocks, index_funds
+from constants import (
+    dividend_stocks, growth_stocks, index_funds,
+    MA_SHORT_PERIOD, MA_LONG_PERIOD, INITIAL_WEALTH, DEFAULT_INTERVAL
+)
 from cache import stock_cache
 from persistent_cache import persistent_cache
 
@@ -147,14 +150,7 @@ elif app_mode == "Stock Analyzer":
 
     stock_ticker = st.text_input("Enter a stock ticker:", "AAPL").upper()
     # Use date type for start_date_input, then convert to datetime
-    start_date_input = st.date_input("Select analysis start date:", date(2020, 1, 1)) 
-    
-    # Define constants for analysis
-    LONG_MA_CONST = 200
-    SHORT_MA_CONST = 50
-    INITIAL_WEALTH_CONST_STR = '1000'
-    # INTERVAL_CONST for yfinance call, period_str should be None if using start/end dates
-    INTERVAL_CONST = '1d'
+    start_date_input = st.date_input("Select analysis start date:", date(2020, 1, 1))
 
     if st.button("Analyze Stock"):
         if not stock_ticker:
@@ -171,14 +167,14 @@ elif app_mode == "Stock Analyzer":
                                         start_date_dt.strftime('%Y-%m-%d'), 
                                         end_date_dt.strftime('%Y-%m-%d'), 
                                         period_str=None,  # Use None if start/end dates are primary
-                                        interval_str=INTERVAL_CONST)
+                                        interval_str=DEFAULT_INTERVAL)
 
                     if df.empty:
                         st.error(f"Could not fetch data for {stock_ticker} from {start_date_input.strftime('%Y-%m-%d')} to {end_date_dt.strftime('%Y-%m-%d')}. "
                                  "This could be due to an invalid ticker, delisting, or no data available for the selected date range.")
                     else:
                         # 2. Apply MA strategy
-                        df_ma = ma_strategy(df.copy(), SHORT_MA_CONST, LONG_MA_CONST)
+                        df_ma = ma_strategy(df.copy(), MA_SHORT_PERIOD, MA_LONG_PERIOD)
 
                         # 3. Get buy/sell signals
                         df_signals = buy_sell_signals(df_ma.copy(), stock_ticker,
@@ -189,7 +185,7 @@ elif app_mode == "Stock Analyzer":
                         backtest_results_df = backtest(df_signals.copy(), stock_ticker,
                                                    start_date_dt.strftime('%Y-%m-%d'),
                                                    end_date_dt.strftime('%Y-%m-%d'),
-                                                   INITIAL_WEALTH_CONST_STR)
+                                                   str(INITIAL_WEALTH))
                         
                         st.subheader(f"Analysis Results for {stock_ticker}")
 
@@ -219,7 +215,7 @@ elif app_mode == "Stock Analyzer":
                             
                             final_ma_wealth = backtest_results_df['MA_wealth'].dropna().iloc[-1]
                             final_lt_wealth = backtest_results_df['LT_wealth'].dropna().iloc[-1]
-                            initial_wealth_float = float(INITIAL_WEALTH_CONST_STR)
+                            initial_wealth_float = INITIAL_WEALTH
                             
                             total_profit_ma = final_ma_wealth - initial_wealth_float
                             total_profit_lt = final_lt_wealth - initial_wealth_float
