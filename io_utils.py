@@ -1,9 +1,13 @@
 import sys
+from typing import Optional, Tuple
+
+import matplotlib
 import matplotlib.pyplot as plt
+import matplotlib.figure
 import pandas as pd
 
 
-def query_yes_no(question, default="yes"):
+def query_yes_no(question: str, default: str = "yes") -> bool:
     """Asks a yes/no question via input() and returns their answer.
 
     "question" is a string that is presented to the user.
@@ -24,17 +28,19 @@ def query_yes_no(question, default="yes"):
         raise ValueError(f"Invalid default answer: '{default}'")
 
     while True:
-        sys.stdout.write(question + prompt_suffix)
+        sys.stdout.write(question + prompt_suffix)  # noqa: golden-principles — interactive CLI prompt
         choice = input().lower().strip()  # Normalize input
         if default is not None and choice == "":
             return valid_responses[default]
         elif choice in valid_responses:
             return valid_responses[choice]
         else:
-            sys.stdout.write("Please answer with 'yes' or 'no'.\n")
+            sys.stdout.write("Please answer with 'yes' or 'no'.\n")  # noqa: golden-principles — interactive CLI prompt
 
 
-def get_price_ma_and_wealth_plots(df, stock):
+def get_price_ma_and_wealth_plots(
+    df: pd.DataFrame, stock: str
+) -> Tuple[matplotlib.figure.Figure, matplotlib.figure.Figure]:
     """
     Generates two Matplotlib figures:
     1. Stock prices with Moving Averages and Buy/Sell signals.
@@ -78,7 +84,9 @@ def get_price_ma_and_wealth_plots(df, stock):
     return fig_price_ma, fig_wealth
 
 
-def get_rsi_plot(df_with_close_price, rsi_series):
+def get_rsi_plot(
+    df_with_close_price: pd.DataFrame, rsi_series: pd.Series
+) -> matplotlib.figure.Figure:
     """
     Generates a Matplotlib figure for the Relative Strength Index (RSI).
     'df_with_close_price' is the DataFrame that must contain the 'Close' price and its index must be DatetimeIndex.

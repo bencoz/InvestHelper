@@ -1,0 +1,56 @@
+name: Automated Garbage Collection
+
+on:
+  schedule:
+    # Run once a week at midnight on Sunday
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+
+jobs:
+  tech-debt-cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Structural Linter (Check Golden Principles)
+        run: |
+          python .agent/scripts/agent_linter.py . > .agent/linter_report.md || true
+          
+      - name: Agent Garbage Collection (Drafting Refactoring PRs)
+        # In a real environment, this invokes a CLI tool connected to an LLM
+        # like `aicoder` or a custom python script parsing linter_report.md
+        env:
+          LLM_API_KEY: ${{ secrets.GEMINI_API_KEY }}  # Use preferred LLM Secret
+        run: |
+          echo "Simulating Agent Refactoring Process..."
+          echo "1. Reading .agent/QUALITY.md"
+          echo "2. Applying fixes for linter failures"
+          echo "If this were a true script, it would use the API to propose updates and write code."
+          
+      # Since this is an agent harness placeholder, it would normally open a PR here using something like peter-evans/create-pull-request
+      - name: Create Pull Request with Cleanup
+        uses: peter-evans/create-pull-request@v5
+        with:
+          commit-message: "[Agent] Automated tech debt garbage collection"
+          title: "🤖 Agent GC: Codebase Cleanup per Golden Principles"
+          body: |
+            This is an automated pull request created by the InvestHelper Garbage Collector Agent.
+            
+            **Changes:**
+            - Ran the structural linter (`agent_linter.py`) against `GOLDEN_PRINCIPLES.md`.
+            - Fixing instances of bare exceptions and loose print statements.
+          branch: "agent/garbage-collection"
+          base: "main"

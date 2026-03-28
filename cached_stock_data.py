@@ -26,8 +26,8 @@ def get_stock_data_cached(
     and disk cache (24 hour TTL) for persistence between sessions.
     """
     # Generate cache key
-    cache_key = f"stock_data:{stock}:{startdate}:{enddate}:{period_str}:{interval_str}"
-    
+    cache_key = f"stock_data:v{yf.__version__}:{stock}:{startdate}:{enddate}:{period_str}:{interval_str}:adj=True"
+
     if not use_cache:
         return _fetch_stock_data(stock, startdate, enddate, period_str, interval_str)
     
@@ -61,7 +61,7 @@ def get_stock_data_cached(
     return data
 
 @retry_with_backoff(exceptions=(HTTPError, ConnectionError, TimeoutError))
-def _fetch_stock_data(stock, startdate, enddate, period_str, interval_str) -> pd.DataFrame:
+def _fetch_stock_data(stock: str, startdate: str, enddate: str, period_str: Optional[str], interval_str: str) -> pd.DataFrame:
     """Internal function to actually fetch data - original implementation."""
     try:
         df = yf.download(
@@ -70,19 +70,23 @@ def _fetch_stock_data(stock, startdate, enddate, period_str, interval_str) -> pd
             end=enddate,
             interval=interval_str,
             period=period_str,
+            auto_adjust=True,
             multi_level_index=False,
             progress=False
         )
         if df.empty:
              logger.warning(f"No data returned for {stock}")
         return df
-    except Exception as e:
-        logger.error(f"Error fetching data for {stock}: {e}")
+    except (HTTPError, ConnectionError, TimeoutError) as e:
+        logger.error(f"Network error fetching data for {stock}: {e}")
         raise DataFetchError(f"Failed to fetch data for {stock}") from e
+    except (ValueError, KeyError) as e:
+        logger.error(f"Data processing error for {stock}: {e}")
+        raise DataFetchError(f"Failed to process data for {stock}") from e
 
 def get_current_price_cached(symbol: str, use_cache: bool = True) -> float:
     """Get current stock price with caching."""
-    cache_key = f"current_price:{symbol}"
+    cache_key = f"current_price:v{yf.__version__}:{symbol}:adj=True"
     
     if use_cache:
         price = stock_cache.get(cache_key)
@@ -95,24 +99,27 @@ def get_current_price_cached(symbol: str, use_cache: bool = True) -> float:
         if not np.isnan(price):
             stock_cache.set(cache_key, price)
         return price
-    except Exception as e:
+    except (DataFetchError, HTTPError, ConnectionError, TimeoutError) as e:
         logger.error(f"Error fetching price for {symbol}: {e}")
         return np.nan
 
 @retry_with_backoff(exceptions=(HTTPError, ConnectionError, TimeoutError))
 def _fetch_current_price(symbol: str) -> float:
+    """Fetch the current price for a single stock ticker."""
     try:
         ticker = yf.Ticker(symbol)
-        hist = ticker.history(period='1d')
+        hist = ticker.history(period='1d', auto_adjust=True)
         if len(hist) > 0:
             return hist['Close'].iloc[-1]
         return np.nan
-    except Exception as e:
+    except (HTTPError, ConnectionError, TimeoutError) as e:
         raise DataFetchError(f"Failed to fetch price for {symbol}") from e
+    except (ValueError, KeyError) as e:
+        raise DataFetchError(f"Failed to parse price for {symbol}") from e
 
 def get_stock_sector_cached(ticker_symbol: str, use_cache: bool = True) -> str:
     """Get stock sector with caching."""
-    cache_key = f"sector:{ticker_symbol}"
+    cache_key = f"sector:v{yf.__version__}:{ticker_symbol}"
     
     if use_cache:
         sector = stock_cache.get(cache_key)
@@ -125,15 +132,18 @@ def get_stock_sector_cached(ticker_symbol: str, use_cache: bool = True) -> str:
         if sector != "Unknown":
             stock_cache.set(cache_key, sector)
         return sector
-    except Exception as e:
+    except (DataFetchError, HTTPError, ConnectionError, TimeoutError) as e:
         logger.warning(f"Error fetching sector for {ticker_symbol}: {e}")
         return "Unknown"
 
 @retry_with_backoff(exceptions=(HTTPError, ConnectionError, TimeoutError))
 def _fetch_stock_sector(ticker_symbol: str) -> str:
+    """Fetch the sector classification for a stock ticker."""
     try:
         ticker = yf.Ticker(ticker_symbol)
         sector = ticker.info.get('sector', 'Unknown')
         return sector
-    except Exception as e:
-         raise DataFetchError(f"Failed to fetch sector for {ticker_symbol}") from e
+    except (HTTPError, ConnectionError, TimeoutError) as e:
+        raise DataFetchError(f"Failed to fetch sector for {ticker_symbol}") from e
+    except (ValueError, KeyError) as e:
+        raise DataFetchError(f"Failed to parse sector for {ticker_symbol}") from e

@@ -22,27 +22,55 @@ from persistent_cache import persistent_cache
 
 st.set_page_config(layout="wide")
 
-st.title("AI Stock Research Assistant")
+st.title("InvestHelper")
+st.caption("AI-Powered Stock Research & Portfolio Management")
 
 # --- Sidebar for Navigation ---
 st.sidebar.title("Navigation")
 app_mode = st.sidebar.selectbox("Choose the app mode",
                                 ["Portfolio Generator", "Stock Analyzer", "Portfolio Analyzer"])
 
-# --- Cache Management ---
-with st.sidebar.expander("Cache Management"):
-    stats = stock_cache.get_stats()
-    st.write(f"Memory Cache: {stats['entries']} entries")
-    
-    if st.button("Clear Cache"):
-        stock_cache.clear()
-        persistent_cache.clear()
-        st.cache_data.clear()
-        st.success("Cache cleared!")
+# --- Cache Management (Developer Mode only) ---
+if st.sidebar.checkbox("Developer Mode", value=False, key="dev_mode"):
+    with st.sidebar.expander("Cache Management"):
+        stats = stock_cache.get_stats()
+        st.write(f"Memory Cache: {stats['entries']} entries")
+        
+        # Display persistent cache disk size
+        import os
+        from pathlib import Path
+        cache_dir = Path(".cache")
+        if cache_dir.exists():
+            cache_files = list(cache_dir.glob("*.pkl"))
+            total_size = sum(f.stat().st_size for f in cache_files)
+            st.write(f"Disk Cache: {len(cache_files)} files ({total_size / 1024:.1f} KB)")
+            
+            # Show oldest cached entry
+            if cache_files:
+                oldest_mtime = min(f.stat().st_mtime for f in cache_files)
+                from datetime import datetime as dt
+                oldest_dt = dt.fromtimestamp(oldest_mtime)
+                age_minutes = (dt.now() - oldest_dt).total_seconds() / 60
+                if age_minutes < 60:
+                    st.write(f"Oldest entry: {age_minutes:.0f} min ago")
+                else:
+                    st.write(f"Oldest entry: {age_minutes / 60:.1f} hours ago")
+        else:
+            st.write("Disk Cache: empty")
+        
+        # Force Refresh toggle
+        force_refresh = st.checkbox("Force Refresh (bypass cache)", value=False, key="force_refresh_toggle")
+        
+        if st.button("Clear Cache"):
+            stock_cache.clear()
+            persistent_cache.clear()
+            st.cache_data.clear()
+            st.success("Cache cleared!")
 
 # --- Portfolio Generator Mode ---
 if app_mode == "Portfolio Generator":
     st.header("Generate Your Stock Portfolio")
+    st.warning("⚠️ This tool is for educational and informational purposes only. It does not constitute financial advice. Past performance does not guarantee future results. Investing involves risk, including the possible loss of principal.")
 
     amount = st.number_input("Enter amount of money ($) to invest:", min_value=0.01, value=1000.0, step=100.0, format="%.2f")
     
@@ -71,8 +99,9 @@ if app_mode == "Portfolio Generator":
                 else:
                     # DEBUG: st.write(f"Selected tickers: {', '.join(selected_tickers)}")
                     try:
-                        # 2. Fetch stock data
-                        stocks_data_for_portfolio = fetch_stock_data(selected_tickers, period=PERIOD)
+                        # 2. Fetch stock data (respect Force Refresh toggle)
+                        use_cache = not st.session_state.get("force_refresh_toggle", False)
+                        stocks_data_for_portfolio = fetch_stock_data(selected_tickers, period=PERIOD, use_cache=use_cache)
 
                         if not stocks_data_for_portfolio:
                             st.error("Could not fetch data for the selected stocks. This could be due to: \n"
@@ -87,7 +116,7 @@ if app_mode == "Portfolio Generator":
                             if not raw_portfolio:
                                 st.info("No stocks could be allocated with the given budget and current stock prices. The portfolio is empty.")
                             else:
-                                portfolio_df = pd.DataFrame(raw_portfolio, columns=["Stock", "Shares", "Mean Price (2y)", "Current Price"])
+                                portfolio_df = pd.DataFrame(raw_portfolio, columns=["Stock", "Shares", "Mean Price (90d)", "Current Price"])
                                 portfolio_df = portfolio_df[portfolio_df["Shares"] > 0]
 
                                 if portfolio_df.empty:
@@ -96,8 +125,8 @@ if app_mode == "Portfolio Generator":
                                     st.subheader("Generated Portfolio:")
                                     st.dataframe(portfolio_df.set_index("Stock"))
                                     
-                                    total_investment_mean_price = (portfolio_df["Shares"] * portfolio_df["Mean Price (2y)"]).sum()
-                                    st.metric(label=f"Total Portfolio Value (at {PERIOD} mean prices)", value=f"${total_investment_mean_price:,.2f}")
+                                    total_investment_mean_price = (portfolio_df["Shares"] * portfolio_df["Mean Price (90d)"]).sum()
+                                    st.metric(label=f"Total Portfolio Value (at 90d mean prices)", value=f"${total_investment_mean_price:,.2f}")
                                     
                                     total_investment_current_price = (portfolio_df["Shares"] * portfolio_df["Current Price"]).sum()
                                     st.metric(label="Total Portfolio Value (at current prices)", value=f"${total_investment_current_price:,.2f}")
@@ -106,8 +135,8 @@ if app_mode == "Portfolio Generator":
                     except DataFetchError as e:
                         logger.error(f"Data fetch error during portfolio generation: {e}")
                         st.error(f"Failed to fetch necessary stock data. Please check your internet connection and try again.")
-                    except Exception as e:
-                        logger.error(f"An unexpected error occurred during portfolio generation: {e}", exc_info=True)
+                    except (InvestHelperError, ValueError, TypeError) as e:
+                        logger.error(f"An error occurred during portfolio generation: {e}", exc_info=True)
                         st.error(f"An unexpected error occurred: {e}")
                         st.error("Please check the console for more details if you are running this locally.")
 
@@ -206,7 +235,7 @@ elif app_mode == "Stock Analyzer":
                 except DataFetchError as e:
                     logger.error(f"Data fetch error for {stock_ticker}: {e}")
                     st.error(f"Failed to fetch data for {stock_ticker}. Please check the ticker symbol and try again.")
-                except Exception as e:
+                except (InvestHelperError, ValueError, KeyError, TypeError) as e:
                     logger.error(f"An error occurred during the stock analysis for {stock_ticker}: {e}", exc_info=True)
                     st.error(f"An error occurred during the stock analysis for {stock_ticker}: {e}")
                     st.error("This could be due to insufficient data for the selected period (e.g., for Moving Averages), or an issue with the underlying calculations. Try a longer date range or a different stock.")
@@ -223,6 +252,10 @@ elif app_mode == "Portfolio Analyzer":
         st.session_state.processed_portfolio_df = None
     if 'uploaded_file_name' not in st.session_state: # To track if file changes
         st.session_state.uploaded_file_name = None
+
+    # CSV template download
+    sample_csv = "symbol,Qty\nAAPL,10\nMSFT,5\nGOOG,8\nVTI,20\n"
+    st.download_button("📥 Download Sample CSV Template", sample_csv, "portfolio_template.csv", "text/csv")
 
     uploaded_file = st.file_uploader("Upload your portfolio CSV file", type=["csv"])
 
@@ -267,7 +300,7 @@ elif app_mode == "Portfolio Analyzer":
             st.error("The uploaded CSV file is malformed. Please ensure it is a valid CSV file.")
             st.session_state.diversification_score = None
             st.session_state.processed_portfolio_df = None
-        except Exception as e:
+        except (InvestHelperError, ValueError, KeyError, OSError) as e:
             logger.error(f"Error processing uploaded file: {e}", exc_info=True)
             st.error(f"An error occurred while processing the file: {e}")
             st.session_state.diversification_score = None
@@ -326,3 +359,7 @@ elif app_mode == "Portfolio Analyzer":
 st.sidebar.info(
     "This app helps novice investors with stock research and portfolio generation."
 )
+
+# --- Persistent Financial Disclaimer Footer ---
+st.divider()
+st.caption("⚠️ This tool is for educational and informational purposes only. It does not constitute financial advice. Investing involves risk of loss.")

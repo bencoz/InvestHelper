@@ -3,6 +3,7 @@ import yfinance as yf
 import numpy as np
 import math
 import pandas as pd
+from typing import List, Optional, Tuple
 from datetime import datetime, date # Ensure datetime and date are imported
 from cached_stock_data import get_stock_data_cached, get_current_price_cached, get_stock_sector_cached
 from parallel_processing import fetch_multiple_stocks_parallel
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 pd.set_option('mode.chained_assignment', None)
 
 
-def get_stock_data(stock, startdate, enddate, period_str, interval_str): # Renamed parameters for clarity
+def get_stock_data(stock: str, startdate: Optional[str], enddate: Optional[str], period_str: Optional[str], interval_str: str) -> pd.DataFrame:
     # yf.pdr_override() # Removed as requested
     
     # Use cached version instead of direct yfinance call
@@ -52,7 +53,7 @@ def get_stock_data(stock, startdate, enddate, period_str, interval_str): # Renam
     # Ensure 'Date' column is datetime type
     try:
         df['Date'] = pd.to_datetime(df['Date'])
-    except Exception:
+    except (ValueError, TypeError):
         # If conversion fails (e.g., column was misidentified as 'Date' but isn't convertible)
         return pd.DataFrame()
 
@@ -67,7 +68,7 @@ def get_stock_data(stock, startdate, enddate, period_str, interval_str): # Renam
     return df
 
 
-def ma_strategy(df, short_MA, long_MA):
+def ma_strategy(df: pd.DataFrame, short_MA: int, long_MA: int) -> pd.DataFrame:
     df['long_MA'] = df['Close'].rolling(int(long_MA)).mean()
     df['short_MA'] = df['Close'].rolling(int(short_MA)).mean()
     df['crosszero'] = np.where(df['short_MA'] < df['long_MA'], 1.0, 0.0)
@@ -83,7 +84,7 @@ def ma_strategy(df, short_MA, long_MA):
     return df
 
 
-def buy_sell_signals(df, stock, start_date, end_date):
+def buy_sell_signals(df: pd.DataFrame, stock: str, start_date: str, end_date: str) -> pd.DataFrame:
     totalprofit = 0
     # print('Stock: {}'.format(stock))
     # print('Period: {} - {}'.format(start_date, end_date))
@@ -107,7 +108,7 @@ def buy_sell_signals(df, stock, start_date, end_date):
     return df
 
 
-def backtest(df, stock, startdate, enddate, initial_wealth):
+def backtest(df: pd.DataFrame, stock: str, startdate: str, enddate: str, initial_wealth: str) -> pd.DataFrame:
     # assumptions:
     initial_wealth = int(initial_wealth)
     profitloss = 0
@@ -208,7 +209,7 @@ def backtest(df, stock, startdate, enddate, initial_wealth):
     return df
 
 
-def RSI(df):
+def RSI(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series]:
     change = df["Close"].diff()
     change.dropna(inplace=True)
     # Create two copies of the Closing price Series
@@ -226,10 +227,15 @@ def RSI(df):
     avg_up = change_up.rolling(14).mean()
     avg_down = change_down.rolling(14).mean().abs()
     rsi = 100 * avg_up / (avg_up + avg_down)
+
+    # Map numeric index to DatetimeIndex so charts show dates on x-axis
+    if 'Date' in df.columns:
+        rsi.index = pd.to_datetime(df.loc[rsi.index, 'Date'].values)
+
     return df, rsi
 
 
-def generate_portfolio(stock_prices, total_budget, option='random'):
+def generate_portfolio(stock_prices: List[Tuple], total_budget: float, option: str = 'random') -> List[Tuple]:
     # Shuffle the list of stock prices to randomize the selection
     random.shuffle(stock_prices)
     portfolio = []

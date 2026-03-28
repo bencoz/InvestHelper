@@ -1,11 +1,15 @@
 import yfinance as yf
-import pandas as pd # Added import for pandas
+import pandas as pd
+import logging
 
 from constants import dividend_stocks, growth_stocks, index_funds
 from io_utils import query_yes_no
 from stock_utils import generate_portfolio
 from cached_stock_data import get_stock_data_cached
 from parallel_processing import fetch_multiple_stocks_parallel
+from exceptions import InvestHelperError, DataFetchError
+
+logger = logging.getLogger(__name__)
 
 VERBOSE = False
 
@@ -16,7 +20,7 @@ def get_user_investment_preferences():
         try:
             amount = float(input("Enter amount of money ($) to invest: "))
         except ValueError:
-            print("Not a number!")
+            logger.warning("Invalid input: user entered a non-numeric value for investment amount.")
             continue
         else:
             break
@@ -45,8 +49,8 @@ def _get_stock_stats(ticker, period):
     if df.empty or 'Close' not in df.columns:
         return None
     
-    current_price = df['Close'].iloc[-1]
-    mean_price = df['Close'].mean()
+    current_price = float(df['Close'].iloc[-1].item()) if isinstance(df['Close'].iloc[-1], pd.Series) else float(df['Close'].iloc[-1])
+    mean_price = float(df['Close'].tail(90).mean())
     
     if pd.isna(mean_price) or pd.isna(current_price):
         return None
@@ -88,38 +92,30 @@ if __name__ == "__main__":
         suitable_stocks = fetch_stock_data(optional_stocks, PERIOD)
 
         if VERBOSE:
-            # Print the list of suitable stocks and their mean price
-            print("Suitable stocks:")
-            # The following loop assumes suitable_stocks is a list of tuples (stock, mean_price, current_price, diff)
-            # but the print statement seems to expect (stock, price) where price is likely mean_price.
-            # Adjusting to print the stock name and its mean price for clarity if VERBOSE is True.
-            for stock_name, mean_p, _, _ in suitable_stocks: # Assuming structure from fetch_stock_data
-                print(f"found {stock_name} for mean price {mean_p}")
-            print("=======================")
+            # Log the list of suitable stocks and their mean price
+            logger.info("Suitable stocks:")
+            for stock_name, mean_p, _, _ in suitable_stocks:
+                logger.info(f"found {stock_name} for mean price {mean_p}")
+            logger.info("=======================")
 
         # Step 4: Allocate investment amount among selected stocks
-        # generate_portfolio expects stock_prices as: list of (name, mean_price, current_price, diff)
-        # and returns list of (stock_ticker, num_shares, mean_price, current_price)
         portfolio = generate_portfolio(stock_prices=suitable_stocks, total_budget=amount)
 
         # Step 5: Generate report or output for user
-        print("Portfolio recommendation:") # Changed title for clarity
+        logger.info("Portfolio recommendation:")
         price_sum = 0
-        # Portfolio items are (stock, num_shares, mean_price_at_purchase_time, current_price)
         for stock_name, num_shares, mean_price_at_purchase_time, current_price_val in portfolio:
             if num_shares > 0:
-                # The original print used 'mean_price' which could be ambiguous.
-                # Using 'mean_price_at_purchase_time' from the portfolio tuple.
-                # The 'price_sum' calculation should also use this consistent mean price.
                 price_sum += num_shares * mean_price_at_purchase_time
-                print(f"Buy {num_shares} shares of {stock_name}. "
+                logger.info(f"Buy {num_shares} shares of {stock_name}. "
                       f"Current price: {current_price_val:.2f} | "
                       f"Mean {PERIOD} price (used for allocation): {mean_price_at_purchase_time:.2f}")
 
-        print(f"Total estimated cost (based on mean prices at allocation): ${price_sum:,.2f}")
+        logger.info(f"Total estimated cost (based on mean prices at allocation): ${price_sum:,.2f}")
         
     except KeyboardInterrupt:
-        print("\nOperation cancelled by user.")
-    except Exception as e:
-        logger.error(f"An unexpected error occurred: {e}", exc_info=True)
-        print(f"\nAn error occurred: {e}. Check logs/errors.log for details.")
+        logger.info("Operation cancelled by user.")
+    except InvestHelperError as e:
+        logger.error(f"InvestHelper error: {e}", exc_info=True)
+    except (ValueError, TypeError, pd.errors.EmptyDataError) as e:
+        logger.error(f"Data processing error: {e}", exc_info=True)

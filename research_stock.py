@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 import pandas as pd
@@ -5,6 +6,8 @@ import pandas as pd
 # Updated to use the new function names from io_utils
 from io_utils import get_price_ma_and_wealth_plots, get_rsi_plot 
 from stock_utils import get_stock_data, ma_strategy, buy_sell_signals, backtest, RSI
+
+logger = logging.getLogger(__name__)
 
 
 def get_stock_research_parameters():
@@ -16,8 +19,8 @@ def get_stock_research_parameters():
             if not stock:  # Basic check for non-empty input
                 raise ValueError("Stock ticker cannot be empty.")
             break
-        except Exception as e:
-            print(f"Invalid input: {e}")
+        except ValueError as e:
+            logger.warning(f"Invalid input: {e}")
             continue
 
     while True:
@@ -27,9 +30,9 @@ def get_stock_research_parameters():
             start_date = datetime(year=year, month=month, day=day).date()
             break
         except ValueError:
-            print("Invalid date format. Please use YYYY-MM-DD.")
-        except Exception as e:
-            print(f"An error occurred: {e}")
+            logger.warning("Invalid date format. Please use YYYY-MM-DD.")
+        except (TypeError, AttributeError) as e:
+            logger.error(f"An error occurred: {e}")
             continue
     return stock, start_date
 
@@ -38,7 +41,7 @@ def perform_stock_analysis(ticker, start_date, end_date, period, interval, long_
     """Performs stock analysis using moving averages and RSI."""
     df = get_stock_data(ticker, start_date, end_date, period, interval)
     if df.empty:
-        print(f"No data found for {ticker} from {start_date} to {end_date}. Aborting analysis.")
+        logger.warning(f"No data found for {ticker} from {start_date} to {end_date}. Aborting analysis.")
         return
 
     df = ma_strategy(df, long_ma, short_ma)
@@ -119,7 +122,7 @@ if __name__ == "__main__":
     # If run directly, we use date range, so `period_str` inside `get_stock_data` (called by `perform_stock_analysis`) should be None.
     # The `period` argument to `perform_stock_analysis` should be `None` in this case.
     
-    print(f"Running analysis for {stock_ticker} from {analysis_start_date_str} to {analysis_end_date_str}...")
+    logger.info(f"Running analysis for {stock_ticker} from {analysis_start_date_str} to {analysis_end_date_str}...")
     perform_stock_analysis(ticker=stock_ticker, 
                            start_date=analysis_start_date_str, 
                            end_date=analysis_end_date_str, 

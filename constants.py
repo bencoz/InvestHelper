@@ -1,17 +1,20 @@
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Load stock lists from config.json
 try:
     with open("config.json", 'r') as f:
         config_data = json.load(f)
 except FileNotFoundError:
-    print("Error: config.json not found. Please ensure the file exists in the root directory.")
+    logger.error("config.json not found. Please ensure the file exists in the root directory.")
     # Provide default empty lists or raise an error if configuration is critical
     dividend_stocks = []
     growth_stocks = []
     index_funds = []
 except json.JSONDecodeError:
-    print("Error: Could not decode config.json. Please ensure it is valid JSON.")
+    logger.error("Could not decode config.json. Please ensure it is valid JSON.")
     # Provide default empty lists or raise an error
     dividend_stocks = []
     growth_stocks = []
@@ -26,7 +29,7 @@ else:
 if not all(isinstance(stock, str) for stock_list in [dividend_stocks, growth_stocks, index_funds] for stock in stock_list):
     # This basic check ensures all items in the lists are strings.
     # More complex validation could be added here (e.g., checking for empty strings, specific formats).
-    print("Warning: Some stock tickers loaded from config.json may not be strings. This could lead to errors.")
+    logger.warning("Some stock tickers loaded from config.json may not be strings. This could lead to errors.")
 
 # Example of how these lists would be used in main.py (no changes needed in main.py):
 # from constants import dividend_stocks, growth_stocks, index_funds

@@ -31,3 +31,33 @@ jobs:
     - name: Run tests
       run: |
         pytest tests/e2e/ --headed=false
+
+    # agent-browser: gives CI agents live "eyes" on the app  
+    # Uses compact accessibility-tree snapshots (~200-400 tokens, not full DOM)
+    - name: Install agent-browser
+      run: npm install -g agent-browser && agent-browser install
+
+    - name: Start Streamlit for agent-browser audit
+      run: |
+        streamlit run app.py --server.headless true --server.port 8502 &
+        sleep 10  # wait for server to be ready
+
+    - name: AI-Driven UI Validation (agent-browser)
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      run: |
+        agent-browser open http://localhost:8502
+        agent-browser snapshot -i > agent_browser_snapshot.txt
+        cat agent_browser_snapshot.txt
+        agent-browser screenshot ci_baseline.png
+        agent-browser close
+
+    - name: Upload agent-browser artifacts
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: agent-browser-audit
+        path: |
+          agent_browser_snapshot.txt
+          ci_baseline.png
+

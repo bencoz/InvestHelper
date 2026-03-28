@@ -40,12 +40,13 @@ class PersistentCache:
                 cache_file.unlink()
                 return None
                 
-        except (pickle.PickleError, EOFError, KeyError, Exception) as e:
+        except (pickle.PickleError, EOFError, KeyError, OSError) as e:
             # Corrupted cache or other error, delete
+            logger.debug(f"Cache read error for key {key}: {e}")
             try:
                 if cache_file.exists():
                     cache_file.unlink()
-            except Exception:
+            except OSError:
                 pass
             return None
     
@@ -60,7 +61,7 @@ class PersistentCache:
                     'timestamp': datetime.now(),
                     'key': key
                 }, f)
-        except (pickle.PickleError, Exception) as e:
+        except (pickle.PickleError, OSError) as e:
             logger.error(f"Failed to cache {key}: {e}")
     
     def clear(self) -> None:
@@ -69,7 +70,7 @@ class PersistentCache:
             for cache_file in self.cache_dir.glob("*.pkl"):
                 try:
                     cache_file.unlink()
-                except Exception:
+                except OSError:
                     pass
     
     def clear_expired(self) -> int:
@@ -83,12 +84,12 @@ class PersistentCache:
                     if datetime.now() - cache_data['timestamp'] >= self.ttl:
                         cache_file.unlink()
                         removed += 1
-                except Exception:
+                except (pickle.PickleError, EOFError, OSError):
                     # Corrupted, remove it
                     try:
                         cache_file.unlink()
                         removed += 1
-                    except Exception:
+                    except OSError:
                         pass
         return removed
 

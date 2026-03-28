@@ -25,6 +25,16 @@ The application offers two main modes accessible via a sidebar navigation:
 *   **Customizable Stock Lists**: Stock choices for portfolio generation can be easily modified by editing the `config.json` file.
 *   **Modular Codebase**: The underlying logic is organized into reusable Python modules.
 
+## 🤖 Agentic Capabilities
+
+This project has been enhanced with an **Agentic Layer**, allowing AI agents to interact with the codebase autonomously.
+- **[AGENTS.md](./AGENTS.md)**: Defines the roles of the specialized agents (Orchestrator, TechnicalAnalyst, PortfolioManager, DataScout).
+- **[.agent/skills/](./.agent/skills/)**: Contains detailed markdown instructions ("Skills") that teach agents how to use the underlying Python functions.
+    - **Technical Analysis**: `ma_strategy`, `RSI`, `backtest`.
+    - **Portfolio Management**: `generate_portfolio`, `calculate_diversification_score`.
+    - **Data Acquisition**: `get_stock_data`, `get_stock_sector`.
+- **Context Awareness**: Custom instructions (`.agent/custom_instructions.md`) and MCP server configurations (`.agent/mcp_servers.md`) enable agents to work safely and effectively.
+
 ## Setup
 
 1.  Ensure you have Python 3.x installed.

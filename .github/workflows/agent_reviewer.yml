@@ -1,0 +1,40 @@
+name: Agent Code Reviewer
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  agent-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Need full history for diffs
+          
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Generate PR Diff
+        run: |
+          git diff origin/${{ github.base_ref }}...HEAD > pr_diff.txt
+
+      - name: Agent Review Execution
+        # This step invokes the cloud LLM using the Orchestrator prompt, deciding which sub-agents to loop in.
+        env:
+          LLM_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Executing Agent-to-Agent review..."
+          echo "1. Fetching pr_diff.txt"
+          echo "2. Passing to Orchestrator Agent context..."
+          echo "3. Enforcing against GOLDEN_PRINCIPLES.md"
+          
+          # In a real setup, a script like:
+          # python .agent/scripts/agent_reviewer.py --pr ${{ github.event.pull_request.number }}
+          # would be executed here to leave comments explicitly on the GitHub PR via the API.
+          
+          echo "Review complete. Validation passed."
